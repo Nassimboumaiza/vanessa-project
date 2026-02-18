@@ -12,7 +12,6 @@ use App\Http\Resources\Api\V1\ProductImageResource;
 use App\Http\Resources\Api\V1\ProductResource;
 use App\Models\Product;
 use App\Models\ProductImage;
-use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -78,7 +77,7 @@ class ProductController extends BaseController
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return $this->errorResponse('Failed to create product: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Failed to create product: '.$e->getMessage(), 500);
         }
     }
 
@@ -116,7 +115,7 @@ class ProductController extends BaseController
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return $this->errorResponse('Failed to update product: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Failed to update product: '.$e->getMessage(), 500);
         }
     }
 
@@ -146,7 +145,7 @@ class ProductController extends BaseController
         $uploadedImages = [];
 
         foreach ($request->file('images') as $index => $image) {
-            $path = $image->store('products/' . $product->id, 'public');
+            $path = $image->store('products/'.$product->id, 'public');
 
             $productImage = ProductImage::create([
                 'product_id' => $product->id,

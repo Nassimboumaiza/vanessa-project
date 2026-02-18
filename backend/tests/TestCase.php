@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -37,7 +37,7 @@ abstract class TestCase extends BaseTestCase
     {
         $token = $user->createToken('test_token')->plainTextToken;
 
-        return $this->withHeader('Authorization', 'Bearer ' . $token);
+        return $this->withHeader('Authorization', 'Bearer '.$token);
     }
 
     /**
@@ -122,7 +122,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * Assert that the response contains validation errors for specified fields.
      *
-     * @param array<string> $fields
+     * @param  array<string>  $fields
      */
     protected function assertValidationErrors($response, array $fields): void
     {
@@ -140,7 +140,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * Assert that a user exists in the database with given attributes.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     protected function assertUserExistsInDatabase(array $attributes): void
     {
@@ -150,7 +150,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * Assert that a user does not exist in the database with given attributes.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     protected function assertUserNotExistsInDatabase(array $attributes): void
     {

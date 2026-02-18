@@ -17,8 +17,7 @@ class ProductController extends BaseController
     public function __construct(
         private readonly ProductService $productService,
         private readonly ProductRepository $productRepository
-    ) {
-    }
+    ) {}
 
     /**
      * Get paginated list of products.

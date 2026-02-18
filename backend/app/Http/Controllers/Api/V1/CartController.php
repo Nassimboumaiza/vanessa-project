@@ -9,7 +9,6 @@ use App\Http\Requests\Api\V1\CartItemRequest;
 use App\Http\Requests\Api\V1\UpdateCartItemRequest;
 use App\Http\Resources\Api\V1\CartResource;
 use App\Models\Cart;
-use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;

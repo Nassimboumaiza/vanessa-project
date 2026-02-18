@@ -30,7 +30,7 @@ class CartFactory extends Factory
             CartItem::factory()->count($count)->create([
                 'cart_id' => $cart->id,
             ]);
-            
+
             // Update cart totals
             $cart->refresh();
             $totalAmount = $cart->items->sum('total_price');

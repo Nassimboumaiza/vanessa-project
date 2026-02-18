@@ -37,7 +37,7 @@ class UpdateProductRequest extends FormRequest
             'country_of_origin' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'string', 'max:100'],
             'perfumer' => ['nullable', 'string', 'max:100'],
-            'release_year' => ['nullable', 'integer', 'min:1900', 'max:' . (now()->year + 1)],
+            'release_year' => ['nullable', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
             'gender' => ['nullable', 'in:unisex,masculine,feminine'],
             'is_active' => ['boolean'],
             'is_featured' => ['boolean'],

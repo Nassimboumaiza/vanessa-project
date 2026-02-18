@@ -12,7 +12,6 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
-use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -172,7 +171,7 @@ class OrderController extends BaseController
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Failed to create order: '.$e->getMessage(), 500);
         }
     }
 

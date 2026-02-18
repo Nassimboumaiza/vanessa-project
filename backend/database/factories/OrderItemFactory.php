@@ -24,7 +24,7 @@ class OrderItemFactory extends Factory
         $tax = $unitPrice * $quantity * 0.1;
         $totalPrice = $unitPrice * $quantity;
         $product = Product::factory()->create();
-        
+
         return [
             'order_id' => Order::factory(),
             'product_id' => $product->id,
@@ -44,6 +44,7 @@ class OrderItemFactory extends Factory
     {
         return $this->state(function (array $attributes) use ($variant) {
             $variant = $variant ?? ProductVariant::factory()->create();
+
             return [
                 'variant_id' => $variant->id,
                 'variant_name' => $variant->name,

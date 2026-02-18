@@ -21,7 +21,7 @@ class UpdateCategoryRequest extends FormRequest
         return [
             'name' => ['nullable', 'string', 'max:100', Rule::unique('categories', 'name')->ignore($categoryId)],
             'description' => ['nullable', 'string'],
-            'parent_id' => ['nullable', 'integer', 'exists:categories,id', 'not_in:' . $categoryId],
+            'parent_id' => ['nullable', 'integer', 'exists:categories,id', 'not_in:'.$categoryId],
             'sort_order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
         ];

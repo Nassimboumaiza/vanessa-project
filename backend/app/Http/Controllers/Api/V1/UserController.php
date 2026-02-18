@@ -29,7 +29,7 @@ class UserController extends BaseController
         if (isset($validated['first_name']) || isset($validated['last_name'])) {
             $firstName = $validated['first_name'] ?? explode(' ', $user->name)[0] ?? '';
             $lastName = $validated['last_name'] ?? explode(' ', $user->name)[1] ?? '';
-            $validated['name'] = trim($firstName . ' ' . $lastName);
+            $validated['name'] = trim($firstName.' '.$lastName);
         }
 
         $user->update($validated);

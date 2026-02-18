@@ -115,7 +115,7 @@ class OrderController extends BaseController
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return $this->errorResponse('Failed to update order status: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Failed to update order status: '.$e->getMessage(), 500);
         }
     }
 }

@@ -28,7 +28,7 @@ class LoginRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new LoginRequest())->rules());
+        $validator = Validator::make($data, (new LoginRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -48,7 +48,7 @@ class LoginRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new LoginRequest())->rules());
+        $validator = Validator::make($data, (new LoginRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -66,7 +66,7 @@ class LoginRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new LoginRequest())->rules());
+        $validator = Validator::make($data, (new LoginRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -86,7 +86,7 @@ class LoginRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new LoginRequest())->rules());
+        $validator = Validator::make($data, (new LoginRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -105,7 +105,7 @@ class LoginRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new LoginRequest())->rules());
+        $validator = Validator::make($data, (new LoginRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -119,7 +119,7 @@ class LoginRequestTest extends TestCase
     public function request_has_correct_validation_rules(): void
     {
         // Arrange
-        $request = new LoginRequest();
+        $request = new LoginRequest;
         $rules = $request->rules();
 
         // Assert
@@ -139,7 +139,7 @@ class LoginRequestTest extends TestCase
     public function custom_error_messages_are_returned(): void
     {
         // Arrange
-        $request = new LoginRequest();
+        $request = new LoginRequest;
         $messages = $request->messages();
 
         // Assert
@@ -155,7 +155,7 @@ class LoginRequestTest extends TestCase
     public function request_is_authorized_for_all_users(): void
     {
         // Arrange
-        $request = new LoginRequest();
+        $request = new LoginRequest;
 
         // Assert
         $this->assertTrue($request->authorize());

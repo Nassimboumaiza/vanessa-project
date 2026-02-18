@@ -21,7 +21,7 @@ class CartItemFactory extends Factory
     {
         $quantity = fake()->numberBetween(1, 5);
         $unitPrice = fake()->randomFloat(2, 50, 300);
-        
+
         return [
             'cart_id' => Cart::factory(),
             'product_id' => Product::factory(),

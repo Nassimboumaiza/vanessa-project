@@ -6,11 +6,9 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -70,20 +68,20 @@ class OrderControllerTest extends TestCase
     private function setupCartWithItems(User $user, int $itemCount = 2): Cart
     {
         $cart = Cart::factory()->create(['user_id' => $user->id]);
-        
+
         $totalAmount = 0;
         $totalItems = 0;
-        
+
         for ($i = 0; $i < $itemCount; $i++) {
             $product = Product::factory()->create([
                 'stock_quantity' => 100,
                 'is_active' => true,
             ]);
-            
+
             $quantity = 2;
             $unitPrice = $product->price;
             $totalPrice = $quantity * $unitPrice;
-            
+
             CartItem::factory()->create([
                 'cart_id' => $cart->id,
                 'product_id' => $product->id,
@@ -91,16 +89,16 @@ class OrderControllerTest extends TestCase
                 'unit_price' => $unitPrice,
                 'total_price' => $totalPrice,
             ]);
-            
+
             $totalAmount += $totalPrice;
             $totalItems += $quantity;
         }
-        
+
         $cart->update([
             'total_amount' => $totalAmount,
             'total_items' => $totalItems,
         ]);
-        
+
         return $cart->fresh();
     }
 
@@ -130,7 +128,7 @@ class OrderControllerTest extends TestCase
                 'data',
                 'pagination',
             ]);
-        
+
         // Should only see their own 5 orders
         $this->assertCount(5, $response->json('data'));
     }
@@ -331,12 +329,12 @@ class OrderControllerTest extends TestCase
         $user = User::factory()->create();
         $cart = Cart::factory()->create(['user_id' => $user->id]);
         $inactiveProduct = Product::factory()->create(['is_active' => false]);
-        
+
         CartItem::factory()->create([
             'cart_id' => $cart->id,
             'product_id' => $inactiveProduct->id,
         ]);
-        
+
         $orderData = $this->getValidOrderData();
 
         // Act
@@ -363,13 +361,13 @@ class OrderControllerTest extends TestCase
             'stock_quantity' => 1,
             'is_active' => true,
         ]);
-        
+
         CartItem::factory()->create([
             'cart_id' => $cart->id,
             'product_id' => $lowStockProduct->id,
             'quantity' => 5,
         ]);
-        
+
         $orderData = $this->getValidOrderData();
 
         // Act
@@ -396,7 +394,7 @@ class OrderControllerTest extends TestCase
             'stock_quantity' => 100,
             'is_active' => true,
         ]);
-        
+
         CartItem::factory()->create([
             'cart_id' => $cart->id,
             'product_id' => $product->id,
@@ -404,7 +402,7 @@ class OrderControllerTest extends TestCase
             'unit_price' => $product->price,
             'total_price' => 5 * $product->price,
         ]);
-        
+
         $orderData = $this->getValidOrderData();
 
         // Act
@@ -478,7 +476,7 @@ class OrderControllerTest extends TestCase
         $expectedShipping = $subtotal > 100 ? 0 : 15;
         $expectedTax = $subtotal * 0.1;
         $expectedTotal = $subtotal + $expectedShipping + $expectedTax;
-        
+
         $orderData = $this->getValidOrderData();
 
         // Act
@@ -521,7 +519,7 @@ class OrderControllerTest extends TestCase
             'tracking_number' => 'TRACK-12345678',
             'carrier' => 'FedEx',
         ]);
-        
+
         OrderStatusHistory::factory()->create([
             'order_id' => $order->id,
             'status' => 'shipped',

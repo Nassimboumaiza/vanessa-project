@@ -13,8 +13,7 @@ class ProductService
 {
     public function __construct(
         private readonly ProductRepository $productRepository
-    ) {
-    }
+    ) {}
 
     /**
      * Get paginated products with filters.

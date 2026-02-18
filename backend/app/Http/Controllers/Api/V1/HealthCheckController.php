@@ -15,8 +15,6 @@ class HealthCheckController extends BaseController
      * Perform a comprehensive health check of the application.
      *
      * Checks database connectivity and returns structured status information.
-     *
-     * @return JsonResponse
      */
     public function check(): JsonResponse
     {
@@ -78,8 +76,6 @@ class HealthCheckController extends BaseController
 
     /**
      * Simple ping endpoint for load balancers.
-     *
-     * @return JsonResponse
      */
     public function ping(): JsonResponse
     {

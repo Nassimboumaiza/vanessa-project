@@ -27,14 +27,14 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
         // Content Security Policy (CSP) - adjust as needed
-        $csp = "default-src 'self'; " .
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
-               "font-src 'self' https://fonts.gstatic.com; " .
-               "img-src 'self' data: https:; " .
-               "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000; " .
-               "frame-ancestors 'none'; " .
-               "base-uri 'self'; " .
+        $csp = "default-src 'self'; ".
+               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; ".
+               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ".
+               "font-src 'self' https://fonts.gstatic.com; ".
+               "img-src 'self' data: https:; ".
+               "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000; ".
+               "frame-ancestors 'none'; ".
+               "base-uri 'self'; ".
                "form-action 'self';";
 
         $response->headers->set('Content-Security-Policy', $csp);

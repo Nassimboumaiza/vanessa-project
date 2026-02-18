@@ -6,11 +6,8 @@ namespace Tests\Feature\Api\V1\Admin;
 
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\ProductImage;
-use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -70,7 +67,7 @@ class ProductControllerTest extends TestCase
             'compare_price' => 249.99,
             'cost_price' => 120.00,
             'stock_quantity' => 50,
-            'sku' => 'PRD-' . uniqid(),
+            'sku' => 'PRD-'.uniqid(),
             'barcode' => '1234567890123',
             'weight' => 0.5,
             'concentration' => 'Eau de Parfum',
@@ -135,7 +132,7 @@ class ProductControllerTest extends TestCase
         Product::factory()->count(2)->create();
 
         // Act
-        $response = $this->actingAsUser($admin)->getJson($this->adminApiUrl('products?category=' . $category->id));
+        $response = $this->actingAsUser($admin)->getJson($this->adminApiUrl('products?category='.$category->id));
 
         // Assert
         $response->assertStatus(200);
@@ -411,14 +408,14 @@ class ProductControllerTest extends TestCase
         $productData['variants'] = [
             [
                 'name' => '50ml',
-                'sku' => 'VAR-' . uniqid(),
+                'sku' => 'VAR-'.uniqid(),
                 'price' => 99.99,
                 'stock_quantity' => 30,
                 'volume_ml' => 50,
             ],
             [
                 'name' => '100ml',
-                'sku' => 'VAR-' . uniqid(),
+                'sku' => 'VAR-'.uniqid(),
                 'price' => 149.99,
                 'stock_quantity' => 20,
                 'volume_ml' => 100,

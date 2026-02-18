@@ -32,7 +32,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -53,7 +53,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -76,7 +76,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -98,7 +98,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -121,7 +121,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -143,7 +143,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -166,7 +166,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -190,7 +190,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -211,7 +211,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -234,7 +234,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -257,7 +257,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -280,7 +280,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -303,7 +303,7 @@ class RegisterRequestTest extends TestCase
         ];
 
         // Act
-        $validator = Validator::make($data, (new RegisterRequest())->rules());
+        $validator = Validator::make($data, (new RegisterRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -316,7 +316,7 @@ class RegisterRequestTest extends TestCase
     public function custom_error_messages_are_returned(): void
     {
         // Arrange
-        $request = new RegisterRequest();
+        $request = new RegisterRequest;
         $messages = $request->messages();
 
         // Assert
@@ -334,7 +334,7 @@ class RegisterRequestTest extends TestCase
     public function request_is_authorized_for_all_users(): void
     {
         // Arrange
-        $request = new RegisterRequest();
+        $request = new RegisterRequest;
 
         // Assert
         $this->assertTrue($request->authorize());

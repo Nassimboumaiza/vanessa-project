@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreProductRequest extends FormRequest
 {
@@ -35,7 +34,7 @@ class StoreProductRequest extends FormRequest
             'country_of_origin' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'string', 'max:100'],
             'perfumer' => ['nullable', 'string', 'max:100'],
-            'release_year' => ['nullable', 'integer', 'min:1900', 'max:' . (now()->year + 1)],
+            'release_year' => ['nullable', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
             'gender' => ['nullable', 'in:unisex,masculine,feminine'],
             'is_active' => ['boolean'],
             'is_featured' => ['boolean'],

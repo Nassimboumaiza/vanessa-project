@@ -23,9 +23,9 @@ class OrderFactory extends Factory
         $shipping = $subtotal > 100 ? 0 : 15;
         $tax = $subtotal * 0.1;
         $total = $subtotal + $shipping + $tax;
-        
+
         return [
-            'order_number' => 'VP-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4)),
+            'order_number' => 'VP-'.now()->format('Ymd').'-'.strtoupper(Str::random(4)),
             'user_id' => User::factory(),
             'status' => fake()->randomElement(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
             'payment_status' => fake()->randomElement(['pending', 'paid', 'failed', 'refunded']),

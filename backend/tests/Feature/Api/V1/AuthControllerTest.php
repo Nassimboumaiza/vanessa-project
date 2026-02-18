@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
@@ -162,7 +161,7 @@ class AuthControllerTest extends TestCase
         // Assert
         $this->assertSuccessfulResponse($response, 'User registered successfully', 201);
         $this->assertDatabaseHas('users', [
-            'name' => $registrationData['first_name'] . ' ' . $registrationData['last_name'],
+            'name' => $registrationData['first_name'].' '.$registrationData['last_name'],
         ]);
     }
 

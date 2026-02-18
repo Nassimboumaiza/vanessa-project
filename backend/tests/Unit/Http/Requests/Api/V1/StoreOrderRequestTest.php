@@ -64,7 +64,7 @@ class StoreOrderRequestTest extends TestCase
     public function request_is_authorized_for_all_users(): void
     {
         // Arrange
-        $request = new StoreOrderRequest();
+        $request = new StoreOrderRequest;
 
         // Assert
         $this->assertTrue($request->authorize());
@@ -84,7 +84,7 @@ class StoreOrderRequestTest extends TestCase
         $data = $this->getValidOrderData();
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -101,7 +101,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -119,7 +119,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['first_name']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -137,7 +137,7 @@ class StoreOrderRequestTest extends TestCase
         $data['shipping_address']['first_name'] = 12345;
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -155,7 +155,7 @@ class StoreOrderRequestTest extends TestCase
         $data['shipping_address']['first_name'] = str_repeat('a', 101);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -173,7 +173,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['last_name']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -191,7 +191,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['address_line_1']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -209,7 +209,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['city']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -227,7 +227,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['state']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -245,7 +245,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['postal_code']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -263,7 +263,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['country']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -281,7 +281,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['company']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -298,7 +298,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['address_line_2']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -315,7 +315,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['shipping_address']['phone']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -336,7 +336,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -354,7 +354,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']['first_name']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -372,7 +372,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']['last_name']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -390,7 +390,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']['address_line_1']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -408,7 +408,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']['city']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -428,7 +428,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['billing_address']['phone']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -449,7 +449,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['payment_method']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -470,7 +470,7 @@ class StoreOrderRequestTest extends TestCase
             $data['payment_method'] = $method;
 
             // Act
-            $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+            $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
             // Assert
             $this->assertFalse($validator->fails(), "Payment method {$method} should be valid");
@@ -488,7 +488,7 @@ class StoreOrderRequestTest extends TestCase
         $data['payment_method'] = 'bitcoin';
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -510,7 +510,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['coupon_code']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -527,7 +527,7 @@ class StoreOrderRequestTest extends TestCase
         $data['coupon_code'] = str_repeat('A', 51);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -545,7 +545,7 @@ class StoreOrderRequestTest extends TestCase
         unset($data['customer_notes']);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertFalse($validator->fails());
@@ -562,7 +562,7 @@ class StoreOrderRequestTest extends TestCase
         $data['customer_notes'] = str_repeat('a', 1001);
 
         // Act
-        $validator = Validator::make($data, (new StoreOrderRequest())->rules());
+        $validator = Validator::make($data, (new StoreOrderRequest)->rules());
 
         // Assert
         $this->assertTrue($validator->fails());
@@ -580,7 +580,7 @@ class StoreOrderRequestTest extends TestCase
     public function custom_error_messages_are_returned(): void
     {
         // Arrange
-        $request = new StoreOrderRequest();
+        $request = new StoreOrderRequest;
         $messages = $request->messages();
 
         // Assert
@@ -607,7 +607,7 @@ class StoreOrderRequestTest extends TestCase
     public function request_has_correct_validation_rules(): void
     {
         // Arrange
-        $request = new StoreOrderRequest();
+        $request = new StoreOrderRequest;
         $rules = $request->rules();
 
         // Assert - Shipping address rules

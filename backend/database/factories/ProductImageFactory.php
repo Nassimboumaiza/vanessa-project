@@ -19,7 +19,7 @@ class ProductImageFactory extends Factory
     {
         return [
             'product_id' => Product::factory(),
-            'image_path' => 'products/' . fake()->numberBetween(1, 100) . '/' . fake()->uuid() . '.jpg',
+            'image_path' => 'products/'.fake()->numberBetween(1, 100).'/'.fake()->uuid().'.jpg',
             'alt_text' => fake()->optional()->words(3, true),
             'sort_order' => fake()->numberBetween(0, 10),
             'is_primary' => false,
