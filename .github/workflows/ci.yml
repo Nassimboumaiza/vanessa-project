@@ -8,6 +8,7 @@ on:
       - 'luxury-perfume-frontend/**'
       - 'docker/**'
       - '.github/workflows/ci.yml'
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
