@@ -1,0 +1,62 @@
+; =============================================================================
+; PHP Development Configuration
+; =============================================================================
+; Settings optimized for development and debugging
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; General Settings
+; -----------------------------------------------------------------------------
+expose_php = On
+display_errors = On
+display_startup_errors = On
+log_errors = On
+error_log = /var/www/html/storage/logs/php_errors.log
+error_reporting = E_ALL
+memory_limit = 512M
+max_execution_time = 300
+max_input_time = 300
+max_input_vars = 3000
+post_max_size = 50M
+upload_max_filesize = 50M
+max_file_uploads = 20
+default_charset = "UTF-8"
+
+; -----------------------------------------------------------------------------
+; Xdebug Configuration (for development stage)
+; -----------------------------------------------------------------------------
+xdebug.mode = develop,debug,coverage
+xdebug.start_with_request = yes
+xdebug.client_host = host.docker.internal
+xdebug.client_port = 9003
+xdebug.idekey = VSCODE
+xdebug.log = /var/www/html/storage/logs/xdebug.log
+xdebug.log_level = 7
+
+; -----------------------------------------------------------------------------
+; OPcache Settings (disabled for development)
+; -----------------------------------------------------------------------------
+opcache.enable = 0
+opcache.enable_cli = 0
+
+; -----------------------------------------------------------------------------
+; Session Settings
+; -----------------------------------------------------------------------------
+session.cookie_httponly = 1
+session.cookie_secure = 0
+session.cookie_samesite = "Lax"
+session.use_strict_mode = 1
+
+; -----------------------------------------------------------------------------
+; Date/Timezone
+; -----------------------------------------------------------------------------
+date.timezone = UTC
+
+; -----------------------------------------------------------------------------
+; Error Logging
+; -----------------------------------------------------------------------------
+log_errors_max_len = 1024
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+report_memleaks = On
+html_errors = On

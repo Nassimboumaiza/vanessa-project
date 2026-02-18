@@ -1,0 +1,302 @@
+# =============================================================================
+# Vanessa Perfumes - Docker Compose Configuration
+# =============================================================================
+# Production-grade multi-container orchestration
+# Usage:
+#   docker compose up -d              # Start all services
+#   docker compose up -d --build      # Rebuild and start
+#   docker compose down               # Stop all services
+#   docker compose logs -f [service]  # View logs
+# =============================================================================
+
+
+
+# =============================================================================
+# Services
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      target: development
+    container_name: vanessa-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./luxury-perfume-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost}
+      - API_URL=${API_URL:-http://web}
+    depends_on:
+      - web
+    networks:
+      - vanessa-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # Application Service (PHP-FPM)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: ${DOCKER_TARGET:-production}
+      args:
+        - PHP_MEMORY_LIMIT=512M
+        - PHP_OPCACHE_ENABLE=1
+    container_name: vanessa-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      # Mount source code for development (optional)
+      - ./backend:/var/www/html:delegated
+      # Persistent storage
+      - app-storage:/var/www/html/storage
+      - app-cache:/var/www/html/bootstrap/cache
+    environment:
+      # Application Environment
+      - APP_NAME=${APP_NAME:-Vanessa}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost}
+      - APP_TIMEZONE=${APP_TIMEZONE:-UTC}
+      - APP_LOCALE=${APP_LOCALE:-en}
+      
+      # Database Configuration
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-vanessa}
+      - DB_USERNAME=${DB_USERNAME:-vanessa}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB:-0}
+      
+      # Cache & Session
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - SESSION_LIFETIME=120
+      - QUEUE_CONNECTION=redis
+      
+      # Mail Configuration
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_ENCRYPTION=${MAIL_ENCRYPTION}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+      
+      # Frontend URL (for CORS)
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      
+      # Docker-specific
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - vanessa-network
+    healthcheck:
+      test: ["CMD", "php", "-r", "echo 'OK';"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # Web Server (Nginx)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: vanessa-web
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./backend/public:/var/www/html/public:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - vanessa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Database (MySQL 8.0)
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: vanessa-db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-vanessa}
+      - MYSQL_USER=${DB_USERNAME:-vanessa}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - TZ=${APP_TIMEZONE:-UTC}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - mysql-logs:/var/log/mysql
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    networks:
+      - vanessa-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Cache & Queue (Redis)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: vanessa-redis
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - vanessa-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Queue Worker (Laravel)
+  # ---------------------------------------------------------------------------
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: ${DOCKER_TARGET:-production}
+    container_name: vanessa-queue
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html:delegated
+      - app-storage:/var/www/html/storage
+    environment:
+      - APP_NAME=${APP_NAME:-Vanessa}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_DATABASE=${DB_DATABASE:-vanessa}
+      - DB_USERNAME=${DB_USERNAME:-vanessa}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+    depends_on:
+      - app
+      - db
+      - redis
+    networks:
+      - vanessa-network
+
+  # ---------------------------------------------------------------------------
+  # Scheduler (Laravel Cron)
+  # ---------------------------------------------------------------------------
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: ${DOCKER_TARGET:-production}
+    container_name: vanessa-scheduler
+    restart: unless-stopped
+    command: /bin/sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html:delegated
+      - app-storage:/var/www/html/storage
+    environment:
+      - APP_NAME=${APP_NAME:-Vanessa}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_DATABASE=${DB_DATABASE:-vanessa}
+      - DB_USERNAME=${DB_USERNAME:-vanessa}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      - app
+      - db
+      - redis
+    networks:
+      - vanessa-network
+
+# =============================================================================
+# Volumes (Persistent Data)
+# =============================================================================
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  app-storage:
+    driver: local
+  app-cache:
+    driver: local
+  nginx-logs:
+    driver: local
+  mysql-logs:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  vanessa-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

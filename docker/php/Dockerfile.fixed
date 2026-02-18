@@ -1,0 +1,158 @@
+# =============================================================================
+# Laravel Application Dockerfile - Production-Grade PHP-FPM
+# =============================================================================
+# Multi-stage build with strict separation of production and development
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# STAGE 1: Dependency Builder
+# -----------------------------------------------------------------------------
+FROM composer:2.7 AS builder
+
+WORKDIR /app
+
+COPY backend/composer.json backend/composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --no-autoloader \
+    --prefer-dist \
+    --optimize-autoloader \
+    --ignore-platform-reqs
+
+COPY backend/ ./
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
+
+# -----------------------------------------------------------------------------
+# STAGE 2: Production Runtime
+# -----------------------------------------------------------------------------
+FROM php:8.2-fpm-alpine3.19 AS production
+
+LABEL maintainer="Vanessa Perfumes <dev@vanessaperfumes.com>"
+LABEL description="Laravel 12 PHP-FPM Production Container"
+
+# Environment variables
+ENV PHP_MEMORY_LIMIT=512M
+ENV PHP_UPLOAD_MAX_FILESIZE=20M
+ENV PHP_POST_MAX_SIZE=20M
+ENV PHP_MAX_EXECUTION_TIME=60
+ENV PHP_OPCACHE_ENABLE=1
+ENV PHP_OPCACHE_MEMORY_CONSUMPTION=256
+ENV PHP_OPCACHE_MAX_ACCELERATED_FILES=10000
+
+# Install runtime dependencies and build PHP extensions in single optimized layer
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    icu-libs \
+    libpng \
+    libjpeg-turbo \
+    libwebp \
+    freetype \
+    libzip \
+    libxml2 \
+    oniguruma \
+    mariadb-connector-c \
+    supervisor \
+    && apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
+        linux-headers \
+        icu-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        libwebp-dev \
+        freetype-dev \
+        libzip-dev \
+        zlib-dev \
+        libxml2-dev \
+        oniguruma-dev \
+        mariadb-connector-c-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mysqli \
+        gd \
+        exif \
+        zip \
+        bcmath \
+        intl \
+        pcntl \
+        opcache \
+        calendar \
+    && docker-php-ext-enable opcache \
+    && pecl install redis igbinary \
+    && docker-php-ext-enable redis igbinary \
+    && apk del .build-deps \
+    && rm -rf /var/cache/apk/* /tmp/pear/* /usr/src/php
+
+# Configure PHP-FPM
+COPY docker/php/php.ini-production /usr/local/etc/php/php.ini
+COPY docker/php/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+# Create required directories and set permissions
+WORKDIR /var/www/html
+
+COPY --from=builder --chown=www-data:www-data /app /var/www/html
+
+RUN mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/testing \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
+
+# Copy and configure entrypoint
+COPY --chown=www-data:www-data docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Health check using built-in PHP-FPM status
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
+    cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1
+
+EXPOSE 9000
+
+USER www-data
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]
+
+# -----------------------------------------------------------------------------
+# STAGE 3: Development Runtime (with Xdebug)
+# -----------------------------------------------------------------------------
+FROM production AS development
+
+USER root
+
+# Install development tools and Xdebug
+RUN apk add --no-cache \
+    git \
+    unzip \
+    bash \
+    nano \
+    mysql-client \
+    && apk add --no-cache --virtual .xdebug-deps \
+        $PHPIZE_DEPS \
+        linux-headers \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug \
+    && { \
+        echo "xdebug.mode=develop,debug"; \
+        echo "xdebug.start_with_request=yes"; \
+        echo "xdebug.client_host=host.docker.internal"; \
+        echo "xdebug.client_port=9003"; \
+        echo "xdebug.idekey=VSCODE"; \
+    } > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini \
+    && apk del .xdebug-deps \
+    && rm -rf /var/cache/apk/* /tmp/pear/*
+
+COPY docker/php/php.ini-development /usr/local/etc/php/php.ini
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+USER www-data

@@ -1,0 +1,169 @@
+# =============================================================================
+# Docker Ignore File
+# =============================================================================
+# Prevents unnecessary files from being sent to Docker build context
+# This speeds up builds and keeps images smaller
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Git
+# -----------------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.gitmodules
+
+# -----------------------------------------------------------------------------
+# IDE & Editor Files
+# -----------------------------------------------------------------------------
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.phpstorm.meta.php
+_ide_helper.php
+_ide_helper_models.php
+
+# -----------------------------------------------------------------------------
+# Environment Files (Sensitive)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.docker.example
+.env.local
+.env.testing
+.env.backup
+
+# -----------------------------------------------------------------------------
+# Dependencies (Installed via Composer/NPM in container)
+# -----------------------------------------------------------------------------
+backend/vendor
+backend/node_modules
+luxury-perfume-frontend/node_modules
+
+# -----------------------------------------------------------------------------
+# Build & Cache Directories
+# -----------------------------------------------------------------------------
+backend/bootstrap/cache/*
+!backend/bootstrap/cache/.gitignore
+backend/storage/app/public/*
+!backend/storage/app/public/.gitignore
+backend/storage/framework/cache/data/*
+!backend/storage/framework/cache/data/.gitignore
+backend/storage/framework/sessions/*
+!backend/storage/framework/sessions/.gitignore
+backend/storage/framework/testing/*
+!backend/storage/framework/testing/.gitignore
+backend/storage/framework/views/*
+!backend/storage/framework/views/.gitignore
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
+backend/storage/*.key
+
+# -----------------------------------------------------------------------------
+# Laravel Specific
+# -----------------------------------------------------------------------------
+backend/public/hot
+backend/public/storage
+backend/public/build
+backend/public/mix-manifest.json
+
+# -----------------------------------------------------------------------------
+# Next.js / Frontend
+# -----------------------------------------------------------------------------
+luxury-perfume-frontend/.next
+luxury-perfume-frontend/out
+luxury-perfume-frontend/dist
+luxury-perfume-frontend/build
+luxury-perfume-frontend/*.tsbuildinfo
+luxury-perfume-frontend/next-env.d.ts
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+backend/phpunit.result.cache
+backend/.phpunit.result.cache
+backend/coverage
+backend/tests/coverage
+.nyc_output
+coverage
+
+# -----------------------------------------------------------------------------
+# Documentation
+# -----------------------------------------------------------------------------
+README.md
+CHANGELOG.md
+LICENSE.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+
+# -----------------------------------------------------------------------------
+# Docker (Don't include Docker files in context)
+# -----------------------------------------------------------------------------
+# Note: We DO need docker/ folder for builds, but not these:
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# CI/CD
+# -----------------------------------------------------------------------------
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+Jenkinsfile
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
+tmp
+temp
+*.tmp
+*.temp
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------------------------------------------------------
+# Backup Files
+# -----------------------------------------------------------------------------
+*.sql
+*.sql.gz
+*.dump
+*.backup
+*.bak
+
+# -----------------------------------------------------------------------------
+# OS Generated
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.tgz
+*.tar.gz
+*.zip
+*.rar
+*.7z

@@ -1,0 +1,456 @@
+name: CD - Production Deployment
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/backend
+  FRONTEND_IMAGE: ${{ github.repository }}/frontend
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # VERSION & METADATA
+  # ===========================================================================
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      short_sha: ${{ steps.version.outputs.short_sha }}
+      backend_image: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+      frontend_image: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+      environment: ${{ steps.env.outputs.environment }}
+      deploy_tag: ${{ steps.version.outputs.deploy_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            DEPLOY_TAG=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "0.0.0-${GITHUB_SHA::7}")
+            DEPLOY_TAG="sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "deploy_tag=$DEPLOY_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+          echo "🔖 Deploy Tag: $DEPLOY_TAG"
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
+
+  # ===========================================================================
+  # BUILD & PUSH BACKEND IMAGE
+  # ===========================================================================
+  build-backend:
+    name: Build Backend Image
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.prepare.outputs.backend_image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,suffix=,format=short
+            type=raw,value=${{ needs.prepare.outputs.deploy_tag }}
+            type=raw,value=${{ needs.prepare.outputs.environment }},enable=${{ needs.prepare.outputs.environment != 'production' }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.environment == 'production' }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/php/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.prepare.outputs.backend_image }}:${{ needs.prepare.outputs.deploy_tag }}
+          format: 'sarif'
+          output: 'trivy-backend-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-backend-results.sarif'
+
+  # ===========================================================================
+  # BUILD & PUSH FRONTEND IMAGE
+  # ===========================================================================
+  build-frontend:
+    name: Build Frontend Image
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.prepare.outputs.frontend_image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,suffix=,format=short
+            type=raw,value=${{ needs.prepare.outputs.deploy_tag }}
+            type=raw,value=${{ needs.prepare.outputs.environment }},enable=${{ needs.prepare.outputs.environment != 'production' }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.environment == 'production' }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/frontend/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.prepare.outputs.frontend_image }}:${{ needs.prepare.outputs.deploy_tag }}
+          format: 'sarif'
+          output: 'trivy-frontend-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend-results.sarif'
+
+  # ===========================================================================
+  # DATABASE MIGRATION CHECK
+  # ===========================================================================
+  migration-check:
+    name: Database Migration Check
+    needs: [prepare, build-backend]
+    runs-on: ubuntu-latest
+    if: needs.prepare.outputs.environment == 'staging' || needs.prepare.outputs.environment == 'production'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql
+          tools: composer:v2
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Check for pending migrations
+        working-directory: backend
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: 3306
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "🔍 Checking for pending migrations..."
+          php artisan migrate:status || true
+          PENDING=$(php artisan migrate:status --pending-only 2>/dev/null | grep -c "Pending" || echo "0")
+          echo "📊 Pending migrations: $PENDING"
+          if [ "$PENDING" -gt "0" ]; then
+            echo "⚠️ $PENDING migrations pending - will run during deployment"
+          fi
+
+  # ===========================================================================
+  # DEPLOY TO STAGING
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [prepare, build-backend, build-frontend, migration-check]
+    runs-on: ubuntu-latest
+    if: needs.prepare.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.vanessaperfumes.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_HOST }}
+          SSH_USER: ${{ secrets.STAGING_USER }}
+          DEPLOY_TAG: ${{ needs.prepare.outputs.deploy_tag }}
+          REGISTRY: ${{ env.REGISTRY }}
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Deploy using SSH
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << EOF
+            set -e
+            cd /opt/vanessa-staging
+            
+            # Pull new images
+            docker pull $REGISTRY/${{ env.BACKEND_IMAGE }}:$DEPLOY_TAG
+            docker pull $REGISTRY/${{ env.FRONTEND_IMAGE }}:$DEPLOY_TAG
+            
+            # Update docker-compose with new images
+            export BACKEND_IMAGE=$REGISTRY/${{ env.BACKEND_IMAGE }}:$DEPLOY_TAG
+            export FRONTEND_IMAGE=$REGISTRY/${{ env.FRONTEND_IMAGE }}:$DEPLOY_TAG
+            
+            # Rolling update - update backend first
+            docker compose -f docker-compose.staging.yml up -d --no-deps app
+            
+            # Run migrations
+            docker compose -f docker-compose.staging.yml exec -T app php artisan migrate --force
+            
+            # Update frontend
+            docker compose -f docker-compose.staging.yml up -d --no-deps frontend
+            
+            # Verify health
+            sleep 10
+            curl -f http://localhost:80/health || exit 1
+            curl -f http://localhost:3000/api/health || exit 1
+            
+            echo "✅ Staging deployment successful"
+          EOF
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+          sleep 30
+          curl -f https://staging.vanessaperfumes.com/health || exit 1
+          curl -f https://api-staging.vanessaperfumes.com/api/health || exit 1
+
+  # ===========================================================================
+  # DEPLOY TO PRODUCTION
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    needs: [prepare, build-backend, build-frontend, migration-check]
+    runs-on: ubuntu-latest
+    if: needs.prepare.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://vanessaperfumes.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production (Blue/Green)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PRODUCTION_HOST }}
+          SSH_USER: ${{ secrets.PRODUCTION_USER }}
+          DEPLOY_TAG: ${{ needs.prepare.outputs.deploy_tag }}
+          REGISTRY: ${{ env.REGISTRY }}
+        run: |
+          echo "🚀 Deploying to production with blue/green strategy..."
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << EOF
+            set -e
+            cd /opt/vanessa-production
+            
+            # Determine active and inactive environments
+            ACTIVE=$(docker compose ps --format json | jq -r '.[] | select(.Service == "app-blue" or .Service == "app-green") | .Service' | head -1 || echo "blue")
+            if [ "$ACTIVE" == "app-blue" ]; then
+              INACTIVE="green"
+            else
+              INACTIVE="blue"
+            fi
+            
+            echo "🔄 Active: $ACTIVE, Deploying to: $INACTIVE"
+            
+            # Pull images
+            docker pull $REGISTRY/${{ env.BACKEND_IMAGE }}:$DEPLOY_TAG
+            docker pull $REGISTRY/${{ env.FRONTEND_IMAGE }}:$DEPLOY_TAG
+            
+            # Deploy to inactive environment
+            export BACKEND_IMAGE=$REGISTRY/${{ env.BACKEND_IMAGE }}:$DEPLOY_TAG
+            export FRONTEND_IMAGE=$REGISTRY/${{ env.FRONTEND_IMAGE }}:$DEPLOY_TAG
+            export DEPLOY_TARGET=$INACTIVE
+            
+            docker compose -f docker-compose.production.yml up -d app-$INACTIVE
+            docker compose -f docker-compose.production.yml up -d frontend-$INACTIVE
+            
+            # Run migrations on inactive instance
+            docker compose -f docker-compose.production.yml exec -T app-$INACTIVE php artisan migrate --force
+            
+            # Health check on inactive environment
+            sleep 10
+            INACTIVE_PORT=$(docker compose -f docker-compose.production.yml port app-$INACTIVE 9000 | cut -d: -f2)
+            curl -f http://localhost:$INACTIVE_PORT/health || exit 1
+            
+            # Switch traffic (using nginx or load balancer)
+            docker compose -f docker-compose.production.yml exec nginx update-config --upstream app-$INACTIVE
+            docker compose -f docker-compose.production.yml exec nginx reload
+            
+            # Keep old version running briefly as backup, then stop
+            sleep 60
+            docker compose -f docker-compose.production.yml stop app-$ACTIVE frontend-$ACTIVE || true
+            
+            echo "✅ Production deployment successful - now running $INACTIVE"
+          EOF
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running production smoke tests..."
+          sleep 30
+          curl -f https://vanessaperfumes.com/health || exit 1
+          curl -f https://api.vanessaperfumes.com/api/health || exit 1
+
+      - name: Notify deployment success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Production deployment successful",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Production Deployment Complete"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Version:* ${{ needs.prepare.outputs.version }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:* ${{ needs.prepare.outputs.short_sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Deployer:* ${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Time:* ${{ github.event.head_commit.timestamp }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ===========================================================================
+  # CLEANUP OLD IMAGES
+  # ===========================================================================
+  cleanup:
+    name: Cleanup Old Images
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    steps:
+      - name: Delete old container images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ env.BACKEND_IMAGE }}
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+
+      - name: Delete old frontend images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ env.FRONTEND_IMAGE }}
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true

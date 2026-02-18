@@ -1,0 +1,325 @@
+name: CI - Pull Request Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'luxury-perfume-frontend/**'
+      - 'docker/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'docker/php/**'
+            frontend:
+              - 'luxury-perfume-frontend/**'
+              - 'docker/frontend/**'
+
+  # ===========================================================================
+  # BACKEND CI
+  # ===========================================================================
+  backend-lint:
+    name: Backend - Lint & Static Analysis
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json, pdo, pdo_mysql, bcmath, redis, gd
+          coverage: none
+          tools: composer:v2
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Run Laravel Pint (Code Style)
+        run: vendor/bin/pint --test
+
+      - name: Run PHPStan (Static Analysis)
+        run: |
+          composer require --dev phpstan/phpstan phpstan/phpstan-laravel --quiet
+          vendor/bin/phpstan analyse app --level=8 --memory-limit=1G --no-progress || true
+
+  backend-test:
+    name: Backend - Tests
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: vanessa_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json, pdo, pdo_mysql, bcmath, redis, gd
+          coverage: xdebug
+          tools: composer:v2
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env.testing
+          php artisan key:generate --env=testing
+          php artisan optimize:clear
+
+      - name: Run PHPUnit tests
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: vanessa_test
+          DB_USERNAME: test
+          DB_PASSWORD: test
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: php artisan test --parallel --coverage --min=80 --colors=never
+
+  # ===========================================================================
+  # FRONTEND CI
+  # ===========================================================================
+  frontend-lint:
+    name: Frontend - Lint & Type Check
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: luxury-perfume-frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: luxury-perfume-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run Prettier check
+        run: npx prettier --check "**/*.{ts,tsx,js,jsx,json,css,md}"
+
+  frontend-test:
+    name: Frontend - Build Verification
+    needs: [changes, frontend-lint]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: luxury-perfume-frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: luxury-perfume-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  # ===========================================================================
+  # DOCKER BUILD VERIFICATION
+  # ===========================================================================
+  docker-build-backend:
+    name: Docker - Backend Build Test
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/php/Dockerfile
+          target: production
+          push: false
+          tags: vanessa-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  docker-build-frontend:
+    name: Docker - Frontend Build Test
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/frontend/Dockerfile
+          target: production
+          push: false
+          tags: vanessa-frontend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # SECURITY SCANNING
+  # ===========================================================================
+  security-scan-backend:
+    name: Security - Backend Dependencies
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'backend'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  security-scan-frontend:
+    name: Security - Frontend Dependencies
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        working-directory: luxury-perfume-frontend
+        run: |
+          npm audit --audit-level=high || true
+
+  # ===========================================================================
+  # FINAL STATUS CHECK
+  # ===========================================================================
+  pr-status-check:
+    name: PR Status Check
+    needs: [backend-lint, backend-test, frontend-lint, frontend-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend-test.result }}" == "failure" ]]; then
+            echo "❌ Some required checks failed"
+            exit 1
+          fi
+          echo "✅ All required checks passed"

@@ -1,0 +1,90 @@
+; =============================================================================
+; PHP Production Configuration
+; =============================================================================
+; Optimized for performance and security in production environments
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; General Settings
+; -----------------------------------------------------------------------------
+expose_php = Off
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = /var/www/html/storage/logs/php_errors.log
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+memory_limit = ${PHP_MEMORY_LIMIT}
+max_execution_time = ${PHP_MAX_EXECUTION_TIME}
+max_input_time = 60
+max_input_vars = 3000
+post_max_size = ${PHP_POST_MAX_SIZE}
+upload_max_filesize = ${PHP_UPLOAD_MAX_FILESIZE}
+max_file_uploads = 20
+default_charset = "UTF-8"
+
+; -----------------------------------------------------------------------------
+; File Uploads
+; -----------------------------------------------------------------------------
+file_uploads = On
+upload_tmp_dir = /tmp
+
+; -----------------------------------------------------------------------------
+; Session Settings
+; -----------------------------------------------------------------------------
+session.cookie_httponly = 1
+session.cookie_secure = 1
+session.cookie_samesite = "Strict"
+session.use_strict_mode = 1
+session.gc_maxlifetime = 1440
+session.gc_probability = 1
+session.gc_divisor = 1000
+
+; -----------------------------------------------------------------------------
+; OPcache Settings
+; -----------------------------------------------------------------------------
+opcache.enable = ${PHP_OPCACHE_ENABLE}
+opcache.enable_cli = 1
+opcache.memory_consumption = ${PHP_OPCACHE_MEMORY_CONSUMPTION}
+opcache.interned_strings_buffer = 16
+opcache.max_accelerated_files = ${PHP_OPCACHE_MAX_ACCELERATED_FILES}
+opcache.revalidate_freq = 60
+opcache.fast_shutdown = 1
+opcache.save_comments = 1
+opcache.optimization_level = 0xFFFFFFFF
+opcache.jit_buffer_size = 100M
+opcache.jit = tracing
+
+; -----------------------------------------------------------------------------
+; Realpath Cache
+; -----------------------------------------------------------------------------
+realpath_cache_size = 4096K
+realpath_cache_ttl = 600
+
+; -----------------------------------------------------------------------------
+; Date/Timezone
+; -----------------------------------------------------------------------------
+date.timezone = UTC
+
+; -----------------------------------------------------------------------------
+; Internationalization
+; -----------------------------------------------------------------------------
+intl.default_locale = en_US
+
+; -----------------------------------------------------------------------------
+; Security
+; -----------------------------------------------------------------------------
+allow_url_fopen = On
+allow_url_include = Off
+auto_globals_jit = On
+cgi.fix_pathinfo = 0
+disable_functions = 
+disable_classes =
+
+; -----------------------------------------------------------------------------
+; Laravel Specific Optimizations
+; -----------------------------------------------------------------------------
+; Increase limits for large API requests
+variables_order = "EGPCS"
+request_order = "GP"
+auto_prepend_file =
+auto_append_file =
