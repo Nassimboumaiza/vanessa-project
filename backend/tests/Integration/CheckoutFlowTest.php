@@ -208,7 +208,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $orderId,
             'status' => 'pending',
-            'notes' => 'Order created',
+            'notes' => 'Order created - Cash on Delivery',
         ]);
     }
 

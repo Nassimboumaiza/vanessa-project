@@ -19,9 +19,14 @@ class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'order_number' => $this->order_number,
+            // Status information - COD Workflow
             'status' => $this->status,
+            'status_label' => $this->status_label,
             'payment_status' => $this->payment_status,
+            'payment_status_label' => $this->payment_status_label,
             'payment_method' => $this->payment_method,
+            'is_paid' => $this->is_paid,
+            'is_cancellable' => $this->is_cancellable,
             'currency' => $this->currency,
             // Pricing
             'subtotal' => $this->subtotal,
@@ -61,6 +66,7 @@ class OrderResource extends JsonResource
             'carrier' => $this->carrier,
             'shipped_at' => $this->shipped_at?->toIso8601String(),
             'delivered_at' => $this->delivered_at?->toIso8601String(),
+            'paid_at' => $this->paid_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
             // Nested relationships

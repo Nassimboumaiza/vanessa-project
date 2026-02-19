@@ -98,8 +98,8 @@ class OrderController extends BaseController
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => $request->user()->id,
-                'status' => 'pending',
-                'payment_status' => 'pending',
+                'status' => Order::STATUS_PENDING,
+                'payment_status' => Order::PAYMENT_STATUS_PENDING,
                 'payment_method' => $validated['payment_method'],
                 'currency' => 'USD',
                 'subtotal' => $subtotal,
@@ -157,8 +157,8 @@ class OrderController extends BaseController
             // Create status history
             OrderStatusHistory::create([
                 'order_id' => $order->id,
-                'status' => 'pending',
-                'notes' => 'Order created',
+                'status' => Order::STATUS_PENDING,
+                'notes' => 'Order created - Cash on Delivery',
             ]);
 
             // Clear cart
@@ -219,17 +219,19 @@ class OrderController extends BaseController
     }
 
     /**
-     * Get status description.
+     * Get status description for COD workflow.
      */
     private function getStatusDescription(string $status): string
     {
         return match ($status) {
-            'pending' => 'Order received, awaiting processing',
-            'processing' => 'Order is being prepared',
-            'shipped' => 'Order has been shipped',
-            'delivered' => 'Order has been delivered',
-            'cancelled' => 'Order has been cancelled',
-            'refunded' => 'Order has been refunded',
+            Order::STATUS_PENDING => 'Order received, awaiting confirmation',
+            Order::STATUS_CONFIRMED => 'Order confirmed, preparing for processing',
+            Order::STATUS_PREPARING => 'Order is being prepared',
+            Order::STATUS_READY_FOR_DELIVERY => 'Order ready for delivery',
+            Order::STATUS_OUT_FOR_DELIVERY => 'Order out for delivery',
+            Order::STATUS_DELIVERED => 'Order delivered - Payment collected',
+            Order::STATUS_CANCELLED => 'Order has been cancelled',
+            Order::STATUS_REFUNDED => 'Order has been refunded',
             default => 'Status updated',
         };
     }
