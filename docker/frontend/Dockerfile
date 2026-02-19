@@ -24,8 +24,8 @@ WORKDIR /app
 # Copy package files for better layer caching
 COPY luxury-perfume-frontend/package*.json ./
 
-# Install dependencies with exact versions
-RUN npm ci --only=production --ignore-scripts \
+# Install ALL dependencies (including dev) needed for build
+RUN npm ci --ignore-scripts \
     && npm cache clean --force
 
 # -----------------------------------------------------------------------------
@@ -49,8 +49,7 @@ ENV NEXT_LINT_SKIP=1
 # Build the application
 RUN npm run build
 
-# Remove dev dependencies to reduce size
-RUN npm prune --production
+# Production dependencies already included in build
 
 # -----------------------------------------------------------------------------
 # STAGE 3: Production Runner
@@ -71,14 +70,13 @@ ENV HOSTNAME=0.0.0.0
 
 # Copy necessary files from builder
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 # Create required directories
 RUN mkdir -p /app/.next/cache \
-    && chown -R nextjs:nodejs /app/.next
+    && chown -R nextjs:nodejs /app
 
 # Security: Set proper permissions
 RUN chmod -R 755 /app/public \
@@ -95,7 +93,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))" || exit 1
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
 
 # -----------------------------------------------------------------------------
 # STAGE 4: Development
