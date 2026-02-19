@@ -25,7 +25,11 @@ jobs:
       backend: ${{ steps.changes.outputs.backend }}
       frontend: ${{ steps.changes.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for change detection
+
       - uses: dorny/paths-filter@v3
         id: changes
         with:
@@ -52,6 +56,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -113,6 +119,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -142,6 +150,16 @@ jobs:
           php artisan key:generate --env=testing
           php artisan optimize:clear
 
+      - name: Run database migrations
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: vanessa_test
+          DB_USERNAME: test
+          DB_PASSWORD: test
+        run: php artisan migrate --force --env=testing
+
       - name: Run PHPUnit tests
         env:
           DB_CONNECTION: mysql
@@ -152,7 +170,7 @@ jobs:
           DB_PASSWORD: test
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-        run: php artisan test --parallel --coverage --min=80 --colors=never
+        run: php artisan test --colors=never
 
   # ===========================================================================
   # FRONTEND CI
@@ -169,6 +187,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -201,6 +221,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -228,6 +250,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -251,6 +275,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -280,6 +306,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -305,6 +333,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper change detection
 
       - name: Run npm audit
         working-directory: luxury-perfume-frontend
