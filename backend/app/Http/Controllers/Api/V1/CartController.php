@@ -5,24 +5,36 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseController;
+use App\Http\Requests\Api\V1\BatchCartItemRequest;
 use App\Http\Requests\Api\V1\CartItemRequest;
 use App\Http\Requests\Api\V1\UpdateCartItemRequest;
 use App\Http\Resources\Api\V1\CartResource;
-use App\Models\Cart;
-use App\Models\Product;
-use App\Models\ProductVariant;
+use App\Http\Resources\Api\V1\CartTotalsResource;
+use App\Models\CartItem;
+use App\Services\CartService;
+use App\Services\StockReservationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CartController extends BaseController
 {
+    public function __construct(
+        private readonly CartService $cartService,
+        private readonly StockReservationService $stockReservationService
+    ) {}
+
     /**
      * Get or create cart.
      */
     public function index(Request $request): JsonResponse
     {
-        $cart = $this->getOrCreateCart($request);
-        $cart->load(['items.product.images', 'items.variant']);
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
+
+        $cart = $this->cartService->getCartWithItems($cart);
 
         return $this->successResponse(new CartResource($cart), 'Cart retrieved successfully');
     }
@@ -34,70 +46,74 @@ class CartController extends BaseController
     {
         $validated = $request->validated();
 
-        $cart = $this->getOrCreateCart($request);
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
 
-        $product = Product::findOrFail($validated['product_id']);
-
-        if (! $product->is_active) {
-            return $this->errorResponse('Product is not available', 400);
-        }
-
-        $price = $product->price;
-        $variant = null;
-
-        if ($validated['variant_id']) {
-            $variant = ProductVariant::where('id', $validated['variant_id'])
-                ->where('product_id', $product->id)
-                ->where('is_active', true)
-                ->first();
-
-            if (! $variant) {
-                return $this->errorResponse('Invalid product variant', 422);
-            }
-
-            $price = $variant->price;
-
-            if ($variant->stock_quantity < $validated['quantity']) {
-                return $this->errorResponse('Insufficient stock for this variant', 400);
-            }
-        } else {
-            if ($product->stock_quantity < $validated['quantity']) {
-                return $this->errorResponse('Insufficient stock', 400);
-            }
-        }
-
-        $existingItem = $cart->items()
-            ->where('product_id', $validated['product_id'])
-            ->where('variant_id', $validated['variant_id'])
-            ->first();
-
-        if ($existingItem) {
-            $newQuantity = $existingItem->quantity + $validated['quantity'];
-
-            if ($variant && $variant->stock_quantity < $newQuantity) {
-                return $this->errorResponse('Insufficient stock for this variant', 400);
-            } elseif (! $variant && $product->stock_quantity < $newQuantity) {
-                return $this->errorResponse('Insufficient stock', 400);
-            }
-
-            $existingItem->update([
-                'quantity' => $newQuantity,
-                'total_price' => $price * $newQuantity,
-            ]);
-        } else {
-            $cart->items()->create([
+        try {
+            $item = $this->cartService->addItem($cart, [
                 'product_id' => $validated['product_id'],
-                'variant_id' => $validated['variant_id'],
+                'variant_id' => $validated['variant_id'] ?? null,
                 'quantity' => $validated['quantity'],
-                'unit_price' => $price,
-                'total_price' => $price * $validated['quantity'],
             ]);
+
+            $cart = $this->cartService->getCartWithItems($cart);
+
+            return $this->successResponse(new CartResource($cart), 'Item added to cart', 201);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 400);
+        }
+    }
+
+    /**
+     * Batch sync items to cart.
+     */
+    public function batchSyncItems(BatchCartItemRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
+
+        $items = $this->cartService->batchSyncItems($cart, $validated['items']);
+
+        // Reserve stock for authenticated users
+        $reservationResult = null;
+        if ($request->user() && $items->isNotEmpty()) {
+            $reservationItems = $items->map(function ($item) {
+                return [
+                    'product_id' => $item->product_id,
+                    'variant_id' => $item->product_variant_id,
+                    'quantity' => $item->quantity,
+                ];
+            })->toArray();
+
+            $reservationResult = $this->stockReservationService->reserveStock(
+                $request->user()->id,
+                $reservationItems,
+                30
+            );
         }
 
-        $this->updateCartTotals($cart);
-        $cart->load(['items.product.images', 'items.variant']);
+        $cart = $this->cartService->getCartWithItems($cart);
+        $totals = $this->cartService->calculateTotals($cart);
 
-        return $this->successResponse(new CartResource($cart), 'Item added to cart', 201);
+        $meta = [];
+        if ($reservationResult) {
+            $meta['stock_reservation'] = $reservationResult;
+        }
+
+        return $this->successResponse(
+            new CartResource($cart),
+            count($validated['items']) . ' item(s) synced to cart',
+            200,
+            $meta
+        );
     }
 
     /**
@@ -107,35 +123,32 @@ class CartController extends BaseController
     {
         $validated = $request->validated();
 
-        $cart = $this->getOrCreateCart($request);
-        $item = $cart->items()->where('id', $id)->first();
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
+
+        $item = CartItem::query()
+            ->where('id', $id)
+            ->whereHas('cart', function ($query) use ($cart): void {
+                $query->where('id', $cart->id);
+            })
+            ->first();
 
         if (! $item) {
             return $this->errorResponse('Cart item not found', 404);
         }
 
-        if ($validated['quantity'] === 0) {
-            $item->delete();
-        } else {
-            $product = $item->product;
-            $variant = $item->variant;
+        try {
+            $this->cartService->updateItemQuantity($item, $validated['quantity']);
 
-            if ($variant && $variant->stock_quantity < $validated['quantity']) {
-                return $this->errorResponse('Insufficient stock for this variant', 400);
-            } elseif (! $variant && $product->stock_quantity < $validated['quantity']) {
-                return $this->errorResponse('Insufficient stock', 400);
-            }
+            $cart = $this->cartService->getCartWithItems($cart);
 
-            $item->update([
-                'quantity' => $validated['quantity'],
-                'total_price' => $item->unit_price * $validated['quantity'],
-            ]);
+            return $this->successResponse(new CartResource($cart), 'Cart item updated');
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 400);
         }
-
-        $this->updateCartTotals($cart);
-        $cart->load(['items.product.images', 'items.variant']);
-
-        return $this->successResponse(new CartResource($cart), 'Cart item updated');
     }
 
     /**
@@ -143,16 +156,26 @@ class CartController extends BaseController
      */
     public function removeItem(Request $request, int $id): JsonResponse
     {
-        $cart = $this->getOrCreateCart($request);
-        $item = $cart->items()->where('id', $id)->first();
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
+
+        $item = CartItem::query()
+            ->where('id', $id)
+            ->whereHas('cart', function ($query) use ($cart): void {
+                $query->where('id', $cart->id);
+            })
+            ->first();
 
         if (! $item) {
             return $this->errorResponse('Cart item not found', 404);
         }
 
-        $item->delete();
-        $this->updateCartTotals($cart);
-        $cart->load(['items.product.images', 'items.variant']);
+        $this->cartService->removeItem($item);
+
+        $cart = $this->cartService->getCartWithItems($cart);
 
         return $this->successResponse(new CartResource($cart), 'Item removed from cart');
     }
@@ -162,46 +185,36 @@ class CartController extends BaseController
      */
     public function clear(Request $request): JsonResponse
     {
-        $cart = $this->getOrCreateCart($request);
-        $cart->items()->delete();
-        $this->updateCartTotals($cart);
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
+        );
+
+        // Release stock reservations for authenticated users
+        if ($request->user()) {
+            $this->stockReservationService->releaseUserReservations($request->user()->id);
+        }
+
+        $this->cartService->clearCart($cart);
 
         return $this->successResponse(new CartResource($cart->fresh()), 'Cart cleared');
     }
 
     /**
-     * Get or create cart for user or session.
+     * Get cart totals.
      */
-    private function getOrCreateCart(Request $request): Cart
+    public function totals(Request $request): JsonResponse
     {
-        if ($request->user()) {
-            return Cart::firstOrCreate(
-                ['user_id' => $request->user()->id],
-                ['total_amount' => 0, 'total_items' => 0]
-            );
-        }
-
-        $sessionId = $request->session()->getId();
-
-        return Cart::firstOrCreate(
-            ['session_id' => $sessionId],
-            ['total_amount' => 0, 'total_items' => 0]
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        $cart = $this->cartService->getOrCreateCart(
+            $request->user(),
+            $sessionId
         );
-    }
 
-    /**
-     * Update cart totals.
-     */
-    private function updateCartTotals(Cart $cart): void
-    {
-        $totals = $cart->items()->selectRaw('
-            SUM(total_price) as total_amount,
-            SUM(quantity) as total_items
-        ')->first();
+        $cart = $this->cartService->getCartWithItems($cart);
+        $totals = $this->cartService->calculateTotals($cart);
 
-        $cart->update([
-            'total_amount' => $totals->total_amount ?? 0,
-            'total_items' => $totals->total_items ?? 0,
-        ]);
+        return $this->successResponse(new CartTotalsResource($totals), 'Cart totals retrieved successfully');
     }
 }

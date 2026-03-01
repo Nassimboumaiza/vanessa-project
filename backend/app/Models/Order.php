@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Order extends Model
 {
     /** @use HasFactory<\Database\Factories\OrderFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     /**
      * Order Status Constants - COD Workflow
@@ -90,6 +92,7 @@ class Order extends Model
         'paid_at',
         'tracking_number',
         'carrier',
+        'idempotency_key',
     ];
 
     protected $casts = [
@@ -286,5 +289,25 @@ class Order extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Configure audit logging options for orders.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'status',
+                'payment_status',
+                'payment_method',
+                'total_amount',
+                'shipping_amount',
+                'tax_amount',
+                'discount_amount',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName): string => "Order {$eventName}")
+            ->useLogName(config('activitylog.log_names.orders', 'orders'));
     }
 }

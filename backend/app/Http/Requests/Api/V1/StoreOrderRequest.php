@@ -41,6 +41,7 @@ class StoreOrderRequest extends FormRequest
             'payment_method' => ['required', 'string', 'in:credit_card,paypal,bank_transfer,cash_on_delivery'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'customer_notes' => ['nullable', 'string', 'max:1000'],
+            'idempotency_key' => ['required', 'string', 'max:64'],
         ];
     }
 

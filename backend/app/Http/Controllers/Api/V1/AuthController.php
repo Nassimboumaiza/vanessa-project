@@ -10,18 +10,20 @@ use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\RegisterRequest;
 use App\Http\Requests\Api\V1\ResetPasswordRequest;
 use App\Http\Resources\Api\V1\UserResource;
-use App\Models\User;
+use App\Services\AuthService;
+use App\Services\UserService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 
 class AuthController extends BaseController
 {
+    public function __construct(
+        private readonly AuthService $authService,
+        private readonly UserService $userService
+    ) {}
+
     /**
      * Register a new user.
      */
@@ -29,22 +31,27 @@ class AuthController extends BaseController
     {
         $validated = $request->validated();
 
-        $user = User::create([
-            'name' => $validated['first_name'].' '.$validated['last_name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => 'customer',
-            'phone' => $validated['phone'] ?? null,
-        ]);
+        try {
+            $user = $this->userService->createUser([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+                'phone' => $validated['phone'] ?? null,
+            ]);
 
-        event(new Registered($user));
+            event(new Registered($user));
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+            $token = $user->createToken('auth_token')->plainTextToken;
 
-        return $this->successResponse([
-            'user' => new UserResource($user),
-            'token' => $token,
-        ], 'User registered successfully', 201);
+            return $this->successResponse(
+                ['user' => new UserResource($user), 'token' => $token],
+                'User registered successfully',
+                201
+            );
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 400);
+        }
     }
 
     /**
@@ -54,26 +61,21 @@ class AuthController extends BaseController
     {
         $validated = $request->validated();
 
-        if (! Auth::attempt($request->only('email', 'password'), $validated['remember'] ?? false)) {
-            return $this->errorResponse('Invalid credentials', 401);
+        $result = $this->authService->attemptLogin([
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'remember' => $validated['remember'] ?? false,
+        ]);
+
+        if (! $result['success']) {
+            $statusCode = $result['status'] ?? 401;
+            return $this->errorResponse($result['message'], $statusCode);
         }
 
-        $user = User::where('email', $validated['email'])->first();
-
-        if (! $user->is_active) {
-            Auth::logout();
-
-            return $this->errorResponse('Account is disabled', 403);
-        }
-
-        $user->update(['last_login_at' => now()]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return $this->successResponse([
-            'user' => new UserResource($user),
-            'token' => $token,
-        ], 'Login successful');
+        return $this->successResponse(
+            ['user' => new UserResource($result['user']), 'token' => $result['token']],
+            $result['message']
+        );
     }
 
     /**
@@ -81,7 +83,11 @@ class AuthController extends BaseController
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        if ($user) {
+            $this->authService->logout($user);
+        }
 
         return $this->successResponse([], 'Logout successful');
     }
@@ -92,13 +98,12 @@ class AuthController extends BaseController
     public function refresh(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user->tokens()->delete();
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->authService->refreshToken($user);
 
-        return $this->successResponse([
-            'user' => new UserResource($user),
-            'token' => $token,
-        ], 'Token refreshed successfully');
+        return $this->successResponse(
+            ['user' => new UserResource($user), 'token' => $token],
+            'Token refreshed successfully'
+        );
     }
 
     /**
@@ -108,13 +113,9 @@ class AuthController extends BaseController
     {
         $validated = $request->validated();
 
-        $status = Password::sendResetLink($validated);
+        $result = $this->authService->sendPasswordResetLink($validated['email']);
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return $this->successResponse([], 'Password reset link sent to your email');
-        }
-
-        return $this->errorResponse('Unable to send password reset link', 400);
+        return $this->successResponse([], $result['message']);
     }
 
     /**
@@ -124,25 +125,12 @@ class AuthController extends BaseController
     {
         $validated = $request->validated();
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password): void {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
+        $result = $this->authService->resetPassword($validated);
 
-                $user->save();
-
-                event(new PasswordReset($user));
-
-                $user->tokens()->delete();
-            }
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
-            return $this->successResponse([], 'Password has been reset successfully');
+        if (! $result['success']) {
+            return $this->errorResponse($result['message'], 400);
         }
 
-        return $this->errorResponse('Invalid token or email', 400);
+        return $this->successResponse([], $result['message']);
     }
 }

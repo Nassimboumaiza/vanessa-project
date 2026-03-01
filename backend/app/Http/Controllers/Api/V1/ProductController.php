@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\BaseController;
 use App\Http\Resources\Api\V1\ProductCollection;
 use App\Http\Resources\Api\V1\ProductResource;
-use App\Repositories\ProductRepository;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,8 +14,7 @@ use Illuminate\Http\Request;
 class ProductController extends BaseController
 {
     public function __construct(
-        private readonly ProductService $productService,
-        private readonly ProductRepository $productRepository
+        private readonly ProductService $productService
     ) {}
 
     /**
@@ -36,7 +34,7 @@ class ProductController extends BaseController
         $filters = array_filter($filters, fn ($value) => $value !== null);
         $perPage = (int) $request->get('per_page', config('api.pagination.default_per_page', 15));
 
-        $products = $this->productService->getProducts($filters, $perPage);
+        $products = $this->productService->getPaginatedProducts($filters, $perPage);
 
         return $this->paginatedResponse(new ProductCollection($products), 'Products retrieved successfully');
     }
@@ -46,13 +44,13 @@ class ProductController extends BaseController
      */
     public function show(string $slug): JsonResponse
     {
-        $product = $this->productService->getProductBySlug($slug);
+        try {
+            $product = $this->productService->findBySlug($slug);
 
-        if (! $product) {
+            return $this->successResponse(new ProductResource($product), 'Product retrieved successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->errorResponse('Product not found', 404);
         }
-
-        return $this->successResponse(new ProductResource($product), 'Product retrieved successfully');
     }
 
     /**
@@ -60,7 +58,7 @@ class ProductController extends BaseController
      */
     public function featured(Request $request): JsonResponse
     {
-        $limit = (int) $request->get('limit', config('api.pagination.default_per_page', 15));
+        $limit = (int) $request->get('limit', 8);
         $products = $this->productService->getFeaturedProducts($limit);
 
         return $this->successResponse(ProductResource::collection($products), 'Featured products retrieved successfully');
@@ -71,7 +69,7 @@ class ProductController extends BaseController
      */
     public function newArrivals(Request $request): JsonResponse
     {
-        $limit = (int) $request->get('limit', config('api.pagination.default_per_page', 15));
+        $limit = (int) $request->get('limit', 8);
         $products = $this->productService->getNewArrivals($limit);
 
         return $this->successResponse(ProductResource::collection($products), 'New arrivals retrieved successfully');
@@ -88,9 +86,33 @@ class ProductController extends BaseController
             return $this->errorResponse('Search query is required', 422);
         }
 
+        $filters = [
+            'sort_by' => $request->get('sort_by', 'created_at'),
+            'sort_order' => $request->get('sort_order', 'desc'),
+        ];
+
         $perPage = (int) $request->get('per_page', config('api.pagination.default_per_page', 15));
-        $products = $this->productService->searchProducts($query, $perPage);
+        $products = $this->productService->searchProducts($query, $filters, $perPage);
 
         return $this->paginatedResponse(new ProductCollection($products), 'Search results retrieved successfully');
+    }
+
+    /**
+     * Get related products.
+     */
+    public function related(string $slug, Request $request): JsonResponse
+    {
+        try {
+            $product = $this->productService->findBySlug($slug);
+            $limit = (int) $request->get('limit', 4);
+            $relatedProducts = $this->productService->getRelatedProducts($product, $limit);
+
+            return $this->successResponse(
+                ProductResource::collection($relatedProducts),
+                'Related products retrieved successfully'
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
+        }
     }
 }

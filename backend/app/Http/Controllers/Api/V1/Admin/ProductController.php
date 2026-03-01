@@ -10,42 +10,36 @@ use App\Http\Requests\Api\V1\UpdateProductRequest;
 use App\Http\Resources\Api\V1\ProductCollection;
 use App\Http\Resources\Api\V1\ProductImageResource;
 use App\Http\Resources\Api\V1\ProductResource;
-use App\Models\Product;
-use App\Models\ProductImage;
+use App\Services\ProductService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ProductController extends BaseController
 {
+    public function __construct(
+        private readonly ProductService $productService
+    ) {}
+
     /**
      * Display a listing of products.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'images', 'variants']);
+        $filters = [
+            'search' => $request->get('search'),
+            'category' => $request->get('category'),
+            'status' => $request->get('status'),
+            'sort_by' => $request->get('sort_by', 'created_at'),
+            'sort_order' => $request->get('sort_order', 'desc'),
+        ];
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->has('category')) {
-            $query->where('category_id', $request->get('category'));
-        }
-
-        if ($request->has('status')) {
-            $isActive = $request->get('status') === 'active';
-            $query->where('is_active', $isActive);
-        }
-
+        $filters = array_filter($filters, fn ($value) => $value !== null);
         $perPage = (int) $request->get('per_page', config('api.pagination.default_per_page', 15));
-        $products = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        // Admin can see all products including inactive ones
+        $products = $this->productService->getPaginatedProducts($filters, $perPage, activeOnly: false);
 
         return $this->paginatedResponse(new ProductCollection($products), 'Products retrieved successfully');
     }
@@ -57,27 +51,16 @@ class ProductController extends BaseController
     {
         $validated = $request->validated();
 
-        DB::beginTransaction();
-
         try {
-            $product = Product::create([
-                ...$validated,
-                'slug' => Str::slug($validated['name']),
-            ]);
+            $product = $this->productService->createProduct($validated);
 
-            if (! empty($validated['variants'])) {
-                foreach ($validated['variants'] as $variant) {
-                    $product->variants()->create($variant);
-                }
-            }
-
-            DB::commit();
-
-            return $this->successResponse(new ProductResource($product->fresh()->load(['category', 'images', 'variants'])), 'Product created successfully', 201);
+            return $this->successResponse(
+                new ProductResource($product),
+                'Product created successfully',
+                201
+            );
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            return $this->errorResponse('Failed to create product: '.$e->getMessage(), 500);
+            return $this->errorResponse('Failed to create product: ' . $e->getMessage(), 500);
         }
     }
 
@@ -86,9 +69,13 @@ class ProductController extends BaseController
      */
     public function show(int $id): JsonResponse
     {
-        $product = Product::with(['category', 'images', 'variants', 'reviews.user'])->findOrFail($id);
+        try {
+            $product = $this->productService->findById($id);
 
-        return $this->successResponse(new ProductResource($product), 'Product retrieved successfully');
+            return $this->successResponse(new ProductResource($product), 'Product retrieved successfully');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
+        }
     }
 
     /**
@@ -96,38 +83,75 @@ class ProductController extends BaseController
      */
     public function update(UpdateProductRequest $request, int $id): JsonResponse
     {
-        $product = Product::findOrFail($id);
         $validated = $request->validated();
 
-        DB::beginTransaction();
-
         try {
-            $updateData = $validated;
-            if (isset($validated['name']) && $validated['name'] !== $product->name) {
-                $updateData['slug'] = Str::slug($validated['name']);
-            }
+            $product = $this->productService->findById($id);
+            $updatedProduct = $this->productService->updateProduct($product, $validated);
 
-            $product->update($updateData);
-
-            DB::commit();
-
-            return $this->successResponse(new ProductResource($product->fresh()->load(['category', 'images', 'variants'])), 'Product updated successfully');
+            return $this->successResponse(
+                new ProductResource($updatedProduct),
+                'Product updated successfully'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            return $this->errorResponse('Failed to update product: '.$e->getMessage(), 500);
+            return $this->errorResponse('Failed to update product: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * Remove the specified product.
      */
-    public function destroy(int $id): Response
+    public function destroy(int $id): JsonResponse
     {
-        $product = Product::findOrFail($id);
-        $product->delete();
+        try {
+            $product = $this->productService->findById($id);
+            $this->productService->deleteProduct($product);
 
-        return $this->noContentResponse();
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully',
+            ], 204);
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
+        }
+    }
+
+    /**
+     * Toggle product featured status.
+     */
+    public function toggleFeatured(int $id): JsonResponse
+    {
+        try {
+            $product = $this->productService->findById($id);
+            $updatedProduct = $this->productService->toggleFeatured($product);
+
+            return $this->successResponse(
+                new ProductResource($updatedProduct),
+                'Product featured status updated'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
+        }
+    }
+
+    /**
+     * Toggle product active status.
+     */
+    public function toggleActive(int $id): JsonResponse
+    {
+        try {
+            $product = $this->productService->findById($id);
+            $updatedProduct = $this->productService->toggleActive($product);
+
+            return $this->successResponse(
+                new ProductResource($updatedProduct),
+                'Product active status updated'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
+        }
     }
 
     /**
@@ -135,30 +159,34 @@ class ProductController extends BaseController
      */
     public function uploadImages(Request $request, int $id): JsonResponse
     {
-        $product = Product::findOrFail($id);
-
         $validated = $request->validate([
             'images' => ['required', 'array'],
             'images.*' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
         ]);
 
-        $uploadedImages = [];
+        try {
+            $product = $this->productService->findById($id);
+            $uploadedImages = [];
 
-        foreach ($request->file('images') as $index => $image) {
-            $path = $image->store('products/'.$product->id, 'public');
+            foreach ($request->file('images') as $index => $image) {
+                $path = $image->store('products/' . $product->id, 'public');
+                $productImage = $product->images()->create([
+                    'image_path' => $path,
+                    'alt_text' => $product->name,
+                    'sort_order' => $index,
+                    'is_primary' => $index === 0 && ! $product->images()->exists(),
+                ]);
+                $uploadedImages[] = $productImage;
+            }
 
-            $productImage = ProductImage::create([
-                'product_id' => $product->id,
-                'image_path' => $path,
-                'alt_text' => $product->name,
-                'sort_order' => $index,
-                'is_primary' => $index === 0 && ! $product->images()->exists(),
-            ]);
-
-            $uploadedImages[] = $productImage;
+            return $this->successResponse(
+                ProductImageResource::collection($product->images()->get()),
+                'Images uploaded successfully',
+                201
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product not found', 404);
         }
-
-        return $this->successResponse(ProductImageResource::collection($product->images()->get()), 'Images uploaded successfully', 201);
     }
 
     /**
@@ -166,14 +194,18 @@ class ProductController extends BaseController
      */
     public function deleteImage(int $id, int $imageId): JsonResponse
     {
-        $product = Product::findOrFail($id);
-        $image = $product->images()->where('id', $imageId)->firstOrFail();
+        try {
+            $product = $this->productService->findById($id);
+            $image = $product->images()->where('id', $imageId)->firstOrFail();
 
-        // TODO: Delete file from storage
-        // Storage::disk('public')->delete($image->image_path);
+            // TODO: Delete file from storage
+            // Storage::disk('public')->delete($image->image_path);
 
-        $image->delete();
+            $image->delete();
 
-        return $this->successResponse([], 'Image deleted successfully');
+            return $this->successResponse([], 'Image deleted successfully');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Product or image not found', 404);
+        }
     }
 }

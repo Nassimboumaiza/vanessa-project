@@ -6,11 +6,16 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseController;
 use App\Http\Requests\Api\V1\NewsletterSubscribeRequest;
-use App\Models\NewsletterSubscriber;
+use App\Services\NewsletterService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class NewsletterController extends BaseController
 {
+    public function __construct(
+        private readonly NewsletterService $newsletterService
+    ) {}
+
     /**
      * Subscribe to newsletter.
      */
@@ -18,32 +23,17 @@ class NewsletterController extends BaseController
     {
         $validated = $request->validated();
 
-        $existing = NewsletterSubscriber::where('email', $validated['email'])->first();
-
-        if ($existing) {
-            if ($existing->status === 'subscribed') {
-                return $this->errorResponse('Email is already subscribed', 422);
-            }
-
-            // Resubscribe
-            $existing->update([
-                'status' => 'subscribed',
-                'subscribed_at' => now(),
-                'unsubscribed_at' => null,
+        try {
+            $subscriber = $this->newsletterService->subscribe([
+                'email' => $validated['email'],
+                'first_name' => $validated['first_name'] ?? null,
+                'last_name' => $validated['last_name'] ?? null,
+                'ip_address' => $request->ip(),
             ]);
 
-            return $this->successResponse([], 'Resubscribed successfully');
+            return $this->successResponse([], 'Subscribed successfully', 201);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         }
-
-        NewsletterSubscriber::create([
-            'email' => $validated['email'],
-            'first_name' => $validated['first_name'] ?? null,
-            'last_name' => $validated['last_name'] ?? null,
-            'status' => 'subscribed',
-            'subscribed_at' => now(),
-            'ip_address' => $request->ip(),
-        ]);
-
-        return $this->successResponse([], 'Subscribed successfully', 201);
     }
 }

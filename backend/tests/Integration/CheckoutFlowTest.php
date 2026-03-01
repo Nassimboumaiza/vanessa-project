@@ -37,6 +37,7 @@ class CheckoutFlowTest extends TestCase
     {
         return [
             'payment_method' => 'credit_card',
+            'idempotency_key' => 'test-idempotency-key-' . uniqid(),
             'shipping_address' => [
                 'first_name' => 'John',
                 'last_name' => 'Doe',
@@ -208,7 +209,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $orderId,
             'status' => 'pending',
-            'notes' => 'Order created - Cash on Delivery',
+            'notes' => 'Order created - Online Payment',
         ]);
     }
 
@@ -347,8 +348,8 @@ class CheckoutFlowTest extends TestCase
         $response->assertStatus(201);
         $orderNumber = $response->json('data.order_number');
 
-        // Format: VP-YYYYMMDD-XXXX
-        $this->assertMatchesRegularExpression('/^VP-\d{8}-[A-Z0-9]{4}$/', $orderNumber);
+        // Format: ORD-YYYYMMDD-XXXXXX
+        $this->assertMatchesRegularExpression('/^ORD-\d{8}-[A-Z0-9]{6}$/', $orderNumber);
     }
 
     // ==========================================

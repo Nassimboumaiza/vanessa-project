@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\BaseController;
 use App\Http\Requests\Api\V1\UpdateSettingsRequest;
+use App\Http\Resources\Api\V1\SettingsResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
@@ -40,7 +41,7 @@ class SettingController extends BaseController
             return $this->getDefaultSettings();
         });
 
-        return $this->successResponse($settings, 'Settings retrieved successfully');
+        return $this->successResponse(new SettingsResource($settings), 'Settings retrieved successfully');
     }
 
     /**
@@ -54,7 +55,7 @@ class SettingController extends BaseController
         // For now, clear cache to simulate update
         Cache::forget('site_settings');
 
-        return $this->successResponse($validated, 'Settings updated successfully');
+        return $this->successResponse(new SettingsResource($validated), 'Settings updated successfully');
     }
 
     /**

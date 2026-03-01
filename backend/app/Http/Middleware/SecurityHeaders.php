@@ -32,7 +32,7 @@ class SecurityHeaders
                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ".
                "font-src 'self' https://fonts.gstatic.com; ".
                "img-src 'self' data: https:; ".
-               "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000; ".
+               "connect-src 'self' http://localhost:3000 http://localhost:3001 http://127.0.0.1:3000 http://127.0.0.1:3001; ".
                "frame-ancestors 'none'; ".
                "base-uri 'self'; ".
                "form-action 'self';";

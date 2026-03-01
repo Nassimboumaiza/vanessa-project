@@ -167,7 +167,9 @@ class ProductControllerTest extends TestCase
         // Arrange
         $admin = $this->createAdminUser();
         Product::factory()->create(['name' => 'Special Perfume']);
-        Product::factory()->count(3)->create();
+        Product::factory()->create(['name' => 'Regular Cologne']);
+        Product::factory()->create(['name' => 'Another Scent']);
+        Product::factory()->create(['name' => 'Test Fragrance']);
 
         // Act
         $response = $this->actingAsUser($admin)->getJson($this->adminApiUrl('products?search=Special'));
@@ -186,8 +188,10 @@ class ProductControllerTest extends TestCase
     {
         // Arrange
         $admin = $this->createAdminUser();
-        Product::factory()->create(['sku' => 'UNIQUE-SKU-123']);
-        Product::factory()->count(3)->create();
+        Product::factory()->create(['sku' => 'UNIQUE-SKU-123', 'name' => 'Product A']);
+        Product::factory()->create(['sku' => 'REGULAR-CODE-456', 'name' => 'Product B']);
+        Product::factory()->create(['sku' => 'ANOTHER-ID-789', 'name' => 'Product C']);
+        Product::factory()->create(['sku' => 'TEST-ITEM-000', 'name' => 'Product D']);
 
         // Act
         $response = $this->actingAsUser($admin)->getJson($this->adminApiUrl('products?search=UNIQUE-SKU'));

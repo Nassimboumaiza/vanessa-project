@@ -63,6 +63,7 @@ return new class extends Migration
             $table->timestamp('delivered_at')->nullable();
             $table->string('tracking_number', 100)->nullable();
             $table->string('carrier', 50)->nullable();
+            $table->string('idempotency_key', 64)->nullable()->unique();
             $table->timestamps();
             $table->softDeletes();
 

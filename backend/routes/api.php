@@ -25,6 +25,9 @@ Route::prefix('v1')->group(function (): void {
 
     // Public Routes
     Route::get('/products', [\App\Http\Controllers\Api\V1\ProductController::class, 'index']);
+    Route::get('/products/featured', [\App\Http\Controllers\Api\V1\ProductController::class, 'featured']);
+    Route::get('/products/new-arrivals', [\App\Http\Controllers\Api\V1\ProductController::class, 'newArrivals']);
+    Route::get('/products/search', [\App\Http\Controllers\Api\V1\ProductController::class, 'search']);
     Route::get('/products/{slug}', [\App\Http\Controllers\Api\V1\ProductController::class, 'show']);
     Route::get('/categories', [\App\Http\Controllers\Api\V1\CategoryController::class, 'index']);
     Route::get('/categories/{slug}/products', [\App\Http\Controllers\Api\V1\CategoryController::class, 'products']);
@@ -35,21 +38,22 @@ Route::prefix('v1')->group(function (): void {
     // Contact Form
     Route::post('/contact', [\App\Http\Controllers\Api\V1\ContactController::class, 'store']);
 
+    // Coupon Validation (Public)
+    Route::post('/coupons/validate', [\App\Http\Controllers\Api\V1\CouponController::class, 'validate']);
+
     // Authentication Routes
-    Route::prefix('auth')->group(function (): void {
+    Route::middleware(['throttle:auth'])->prefix('auth')->group(function (): void {
         Route::post('/register', [\App\Http\Controllers\Api\V1\AuthController::class, 'register']);
         Route::post('/login', [\App\Http\Controllers\Api\V1\AuthController::class, 'login']);
         Route::post('/forgot-password', [\App\Http\Controllers\Api\V1\AuthController::class, 'forgotPassword']);
         Route::post('/reset-password', [\App\Http\Controllers\Api\V1\AuthController::class, 'resetPassword'])->name('password.reset');
     });
 
-    // Protected Routes
-    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
+    // Protected Routes - AuthenticateViaCookie handles cookie-based auth
+    Route::middleware(['App\Http\Middleware\AuthenticateViaCookie', 'auth:sanctum', 'throttle:api'])->group(function (): void {
 
         // User Profile
-        Route::get('/user', function (Request $request) {
-            return $request->user();
-        });
+        Route::get('/user', [\App\Http\Controllers\Api\V1\UserController::class, 'getCurrentUser']);
         Route::put('/user/profile', [\App\Http\Controllers\Api\V1\UserController::class, 'updateProfile']);
         Route::put('/user/password', [\App\Http\Controllers\Api\V1\UserController::class, 'updatePassword']);
 
@@ -60,9 +64,16 @@ Route::prefix('v1')->group(function (): void {
         // Shopping Cart
         Route::get('/cart', [\App\Http\Controllers\Api\V1\CartController::class, 'index']);
         Route::post('/cart/items', [\App\Http\Controllers\Api\V1\CartController::class, 'addItem']);
+        Route::post('/cart/sync', [\App\Http\Controllers\Api\V1\CartController::class, 'batchSyncItems']);
         Route::put('/cart/items/{id}', [\App\Http\Controllers\Api\V1\CartController::class, 'updateItem']);
         Route::delete('/cart/items/{id}', [\App\Http\Controllers\Api\V1\CartController::class, 'removeItem']);
         Route::delete('/cart', [\App\Http\Controllers\Api\V1\CartController::class, 'clear']);
+
+        // Coupons (Protected)
+        Route::post('/cart/coupon', [\App\Http\Controllers\Api\V1\CouponController::class, 'apply']);
+        Route::delete('/cart/coupon', [\App\Http\Controllers\Api\V1\CouponController::class, 'remove']);
+        Route::get('/user/coupons/available', [\App\Http\Controllers\Api\V1\CouponController::class, 'available']);
+        Route::get('/user/coupons/redeemed', [\App\Http\Controllers\Api\V1\CouponController::class, 'redeemed']);
 
         // Wishlist
         Route::get('/wishlist', [\App\Http\Controllers\Api\V1\WishlistController::class, 'index']);
@@ -113,6 +124,16 @@ Route::prefix('v1')->group(function (): void {
         // Newsletter Subscribers
         Route::get('/subscribers', [\App\Http\Controllers\Api\V1\Admin\NewsletterController::class, 'index']);
         Route::delete('/subscribers/{id}', [\App\Http\Controllers\Api\V1\Admin\NewsletterController::class, 'destroy']);
+
+        // Coupons Management
+        Route::get('/coupons', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'index']);
+        Route::post('/coupons', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'store']);
+        Route::get('/coupons/summary', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'summary']);
+        Route::get('/coupons/{coupon}', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'show']);
+        Route::put('/coupons/{coupon}', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'update']);
+        Route::delete('/coupons/{coupon}', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'destroy']);
+        Route::put('/coupons/{coupon}/toggle', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'toggleActive']);
+        Route::get('/coupons/{coupon}/statistics', [\App\Http\Controllers\Api\V1\Admin\CouponController::class, 'statistics']);
 
         // Site Settings
         Route::get('/settings', [\App\Http\Controllers\Api\V1\Admin\SettingController::class, 'index']);

@@ -452,7 +452,7 @@ class AuthControllerTest extends TestCase
         ]);
 
         // Assert
-        $this->assertSuccessfulResponse($response, 'Password reset link sent to your email');
+        $this->assertSuccessfulResponse($response, 'Password reset link has been sent to your email');
     }
 
     /**
@@ -487,8 +487,8 @@ class AuthControllerTest extends TestCase
         // Act
         $response = $this->postJson($this->apiUrl('auth/forgot-password'), $resetData);
 
-        // Assert - Laravel returns error for invalid email
-        $this->assertErrorResponse($response, 'Unable to send password reset link', 400);
+        // Assert - Returns success for security (don't reveal if email exists)
+        $this->assertSuccessfulResponse($response, 'If your email exists in our system, you will receive a password reset link');
     }
 
     /**
@@ -541,7 +541,7 @@ class AuthControllerTest extends TestCase
         $response = $this->postJson($this->apiUrl('auth/reset-password'), $resetData);
 
         // Assert
-        $this->assertErrorResponse($response, 'Invalid token or email', 400);
+        $this->assertErrorResponse($response, 'Invalid or expired reset token', 400);
     }
 
     /**

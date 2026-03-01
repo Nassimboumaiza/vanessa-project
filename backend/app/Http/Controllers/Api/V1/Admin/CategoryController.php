@@ -8,30 +8,36 @@ use App\Http\Controllers\Api\BaseController;
 use App\Http\Requests\Api\V1\StoreCategoryRequest;
 use App\Http\Requests\Api\V1\UpdateCategoryRequest;
 use App\Http\Resources\Api\V1\CategoryResource;
-use App\Models\Category;
+use App\Services\CategoryService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Http\Response;
 
 class CategoryController extends BaseController
 {
+    public function __construct(
+        private readonly CategoryService $categoryService
+    ) {}
+
     /**
      * Display a listing of categories.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Category::with(['parent', 'children'])
-            ->withCount(['products' => function ($q): void {
-                $q->where('is_active', true);
-            }]);
+        $filters = [
+            'search' => $request->get('search'),
+            'is_active' => $request->get('is_active'),
+        ];
 
-        if ($request->has('search')) {
-            $query->where('name', 'like', '%'.$request->get('search').'%');
-        }
+        $filters = array_filter($filters, fn ($value) => $value !== null);
 
-        $categories = $query->orderBy('sort_order')->orderBy('name')->get();
+        $categories = $this->categoryService->getPaginatedCategories($filters, 100);
 
-        return $this->successResponse(CategoryResource::collection($categories), 'Categories retrieved successfully');
+        return $this->successResponse(
+            CategoryResource::collection($categories),
+            'Categories retrieved successfully'
+        );
     }
 
     /**
@@ -41,12 +47,17 @@ class CategoryController extends BaseController
     {
         $validated = $request->validated();
 
-        $category = Category::create([
-            ...$validated,
-            'slug' => Str::slug($validated['name']),
-        ]);
+        try {
+            $category = $this->categoryService->createCategory($validated);
 
-        return $this->successResponse(new CategoryResource($category), 'Category created successfully', 201);
+            return $this->successResponse(
+                new CategoryResource($category),
+                'Category created successfully',
+                201
+            );
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
+        }
     }
 
     /**
@@ -54,9 +65,16 @@ class CategoryController extends BaseController
      */
     public function show(int $id): JsonResponse
     {
-        $category = Category::with(['parent', 'children', 'products'])->findOrFail($id);
+        try {
+            $category = $this->categoryService->findById($id);
 
-        return $this->successResponse(new CategoryResource($category), 'Category retrieved successfully');
+            return $this->successResponse(
+                new CategoryResource($category->load(['parent', 'children', 'products'])),
+                'Category retrieved successfully'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Category not found', 404);
+        }
     }
 
     /**
@@ -64,33 +82,55 @@ class CategoryController extends BaseController
      */
     public function update(UpdateCategoryRequest $request, int $id): JsonResponse
     {
-        $category = Category::findOrFail($id);
         $validated = $request->validated();
 
-        $updateData = array_filter($validated, fn ($value) => $value !== null);
+        try {
+            $category = $this->categoryService->findById($id);
+            $updatedCategory = $this->categoryService->updateCategory($category, $validated);
 
-        if (isset($updateData['name']) && $updateData['name'] !== $category->name) {
-            $updateData['slug'] = Str::slug($updateData['name']);
+            return $this->successResponse(
+                new CategoryResource($updatedCategory),
+                'Category updated successfully'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Category not found', 404);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         }
-
-        $category->update($updateData);
-
-        return $this->successResponse(new CategoryResource($category->fresh()), 'Category updated successfully');
     }
 
     /**
      * Remove the specified category.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id): Response
     {
-        $category = Category::findOrFail($id);
+        try {
+            $category = $this->categoryService->findById($id);
+            $this->categoryService->deleteCategory($category);
 
-        if ($category->products()->count() > 0) {
-            return $this->errorResponse('Cannot delete category with associated products', 422);
+            return $this->noContentResponse();
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Category not found', 404);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         }
+    }
 
-        $category->delete();
+    /**
+     * Toggle category active status.
+     */
+    public function toggleActive(int $id): JsonResponse
+    {
+        try {
+            $category = $this->categoryService->findById($id);
+            $updatedCategory = $this->categoryService->toggleActive($category);
 
-        return $this->noContentResponse();
+            return $this->successResponse(
+                new CategoryResource($updatedCategory),
+                'Category status updated successfully'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Category not found', 404);
+        }
     }
 }

@@ -68,7 +68,7 @@ class RegisterRequestTest extends TestCase
     {
         // Arrange
         $data = [
-            'first_name' => str_repeat('a', 101),
+            'first_name' => str_repeat('a', 256),
             'last_name' => 'Doe',
             'email' => 'john@example.com',
             'password' => 'SecurePassword123!',
@@ -114,7 +114,7 @@ class RegisterRequestTest extends TestCase
         // Arrange
         $data = [
             'first_name' => 'John',
-            'last_name' => str_repeat('a', 101),
+            'last_name' => str_repeat('a', 256),
             'email' => 'john@example.com',
             'password' => 'SecurePassword123!',
             'password_confirmation' => 'SecurePassword123!',

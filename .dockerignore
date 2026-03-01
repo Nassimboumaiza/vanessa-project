@@ -45,44 +45,17 @@ _ide_helper_models.php
 # -----------------------------------------------------------------------------
 backend/vendor
 backend/node_modules
-luxury-perfume-frontend/node_modules
+frontend/node_modules
 
 # -----------------------------------------------------------------------------
 # Build & Cache Directories
 # -----------------------------------------------------------------------------
-backend/bootstrap/cache/*
-!backend/bootstrap/cache/.gitignore
-backend/storage/app/public/*
-!backend/storage/app/public/.gitignore
-backend/storage/framework/cache/data/*
-!backend/storage/framework/cache/data/.gitignore
-backend/storage/framework/sessions/*
-!backend/storage/framework/sessions/.gitignore
-backend/storage/framework/testing/*
-!backend/storage/framework/testing/.gitignore
-backend/storage/framework/views/*
-!backend/storage/framework/views/.gitignore
-backend/storage/logs/*
-!backend/storage/logs/.gitignore
-backend/storage/*.key
-
-# -----------------------------------------------------------------------------
-# Laravel Specific
-# -----------------------------------------------------------------------------
-backend/public/hot
-backend/public/storage
-backend/public/build
-backend/public/mix-manifest.json
-
-# -----------------------------------------------------------------------------
-# Next.js / Frontend
-# -----------------------------------------------------------------------------
-luxury-perfume-frontend/.next
-luxury-perfume-frontend/out
-luxury-perfume-frontend/dist
-luxury-perfume-frontend/build
-luxury-perfume-frontend/*.tsbuildinfo
-luxury-perfume-frontend/next-env.d.ts
+frontend/.next
+frontend/out
+frontend/dist
+frontend/build
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
 
 # -----------------------------------------------------------------------------
 # Testing
@@ -97,12 +70,7 @@ coverage
 # -----------------------------------------------------------------------------
 # Documentation
 # -----------------------------------------------------------------------------
-README.md
-CHANGELOG.md
-LICENSE.md
-CONTRIBUTING.md
-CODE_OF_CONDUCT.md
-SECURITY.md
+# (Keep README.md for project documentation)
 
 # -----------------------------------------------------------------------------
 # Docker (Don't include Docker files in context)

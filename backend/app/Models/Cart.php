@@ -18,11 +18,15 @@ class Cart extends Model
         'user_id',
         'total_amount',
         'total_items',
+        'coupon_id',
+        'discount_amount',
+        'coupon_code',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'total_items' => 'integer',
+        'discount_amount' => 'decimal:2',
     ];
 
     public function user(): BelongsTo
@@ -33,5 +37,26 @@ class Cart extends Model
     public function items(): HasMany
     {
         return $this->hasMany(CartItem::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    /**
+     * Check if cart has an active coupon
+     */
+    public function hasCoupon(): bool
+    {
+        return $this->coupon_id !== null;
+    }
+
+    /**
+     * Get subtotal before discount
+     */
+    public function getSubtotal(): float
+    {
+        return $this->items->sum('total_price');
     }
 }

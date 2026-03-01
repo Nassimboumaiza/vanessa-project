@@ -47,7 +47,14 @@ echo "[4/6] Checking environment configuration..."
 # Generate APP_KEY if not set
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then
     echo "APP_KEY not set. Generating new key..."
-    php artisan key:generate --force --no-interaction 2>/dev/null || echo "Note: APP_KEY generation requires .env file"
+    # Generate key and capture it
+    APP_KEY_VALUE=$(php artisan key:generate --force --no-interaction --show 2>/dev/null)
+    if [ -n "$APP_KEY_VALUE" ]; then
+        export APP_KEY="$APP_KEY_VALUE"
+        echo "APP_KEY generated and exported to environment"
+    else
+        echo "Warning: Failed to generate APP_KEY. Encryption features may not work."
+    fi
 fi
 
 # -----------------------------------------------------------------------------

@@ -14,13 +14,23 @@ class RegisterRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'first_name' => $this->input('firstName', $this->input('first_name')),
+            'last_name' => $this->input('lastName', $this->input('last_name')),
+            'password_confirmation' => $this->input('passwordConfirmation', $this->input('password_confirmation')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::defaults()->min(8)->mixedCase()->numbers()],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['required', 'string'],
             'phone' => ['nullable', 'string', 'max:20'],
         ];
     }

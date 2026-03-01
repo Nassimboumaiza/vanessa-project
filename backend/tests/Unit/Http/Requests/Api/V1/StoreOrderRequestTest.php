@@ -50,6 +50,7 @@ class StoreOrderRequestTest extends TestCase
             'payment_method' => 'credit_card',
             'coupon_code' => 'SAVE10',
             'customer_notes' => 'Please gift wrap this order',
+            'idempotency_key' => 'test-idempotency-key-12345',
         ];
     }
 

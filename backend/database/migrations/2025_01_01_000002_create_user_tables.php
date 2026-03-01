@@ -15,16 +15,36 @@ return new class extends Migration
     {
         // Users extension
         Schema::table('users', function (Blueprint $table): void {
-            $table->string('phone', 20)->nullable()->after('email');
-            $table->string('avatar', 255)->nullable()->after('phone');
-            $table->enum('gender', ['male', 'female', 'other'])->nullable()->after('avatar');
-            $table->date('birthdate')->nullable()->after('gender');
-            $table->enum('role', ['customer', 'admin', 'manager'])->default('customer')->after('birthdate');
-            $table->boolean('is_active')->default(true)->after('role');
-            $table->timestamp('last_login_at')->nullable()->after('email_verified_at');
-            $table->string('preferred_language', 10)->default('en')->after('last_login_at');
-            $table->string('preferred_currency', 3)->default('USD')->after('preferred_language');
-            $table->softDeletes();
+            if (!Schema::hasColumn('users', 'phone')) {
+                $table->string('phone', 20)->nullable()->after('email');
+            }
+            if (!Schema::hasColumn('users', 'avatar')) {
+                $table->string('avatar', 255)->nullable()->after('phone');
+            }
+            if (!Schema::hasColumn('users', 'gender')) {
+                $table->enum('gender', ['male', 'female', 'other'])->nullable()->after('avatar');
+            }
+            if (!Schema::hasColumn('users', 'birthdate')) {
+                $table->date('birthdate')->nullable()->after('gender');
+            }
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['customer', 'admin', 'manager'])->default('customer')->after('birthdate');
+            }
+            if (!Schema::hasColumn('users', 'is_active')) {
+                $table->boolean('is_active')->default(true)->after('role');
+            }
+            if (!Schema::hasColumn('users', 'last_login_at')) {
+                $table->timestamp('last_login_at')->nullable()->after('email_verified_at');
+            }
+            if (!Schema::hasColumn('users', 'preferred_language')) {
+                $table->string('preferred_language', 10)->default('en')->after('last_login_at');
+            }
+            if (!Schema::hasColumn('users', 'preferred_currency')) {
+                $table->string('preferred_currency', 3)->default('USD')->after('preferred_language');
+            }
+            if (!Schema::hasColumn('users', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
 
         // User Addresses
@@ -101,11 +121,13 @@ return new class extends Migration
         Schema::dropIfExists('user_addresses');
 
         Schema::table('users', function (Blueprint $table): void {
-            $table->dropColumn([
-                'phone', 'avatar', 'gender', 'birthdate', 'role', 'is_active',
-                'last_login_at', 'preferred_language',
-                'preferred_currency', 'deleted_at',
-            ]);
+            $columns = ['phone', 'avatar', 'gender', 'birthdate', 'role', 'is_active',
+                'last_login_at', 'preferred_language', 'preferred_currency', 'deleted_at'];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('users', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };

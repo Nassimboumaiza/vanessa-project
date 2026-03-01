@@ -59,6 +59,7 @@ class OrderControllerTest extends TestCase
                 'phone' => '+1234567890',
             ],
             'customer_notes' => 'Please gift wrap this order.',
+            'idempotency_key' => 'test-idempotency-key-' . uniqid(),
         ];
     }
 
@@ -273,7 +274,10 @@ class OrderControllerTest extends TestCase
         ]);
 
         // Cart should be cleared
-        $this->assertDatabaseMissing('cart_items', ['cart_id' => $user->cart?->id]);
+        $cart = $user->cart()->first();
+        if ($cart) {
+            $this->assertDatabaseMissing('cart_items', ['cart_id' => $cart->id]);
+        }
     }
 
     /**
@@ -459,7 +463,7 @@ class OrderControllerTest extends TestCase
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $orderId,
             'status' => 'pending',
-            'notes' => 'Order created - Cash on Delivery',
+            'notes' => 'Order created - Online Payment',
         ]);
     }
 

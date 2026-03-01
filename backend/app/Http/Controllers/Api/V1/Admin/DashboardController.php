@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\BaseController;
+use App\Http\Resources\Api\V1\DashboardStatsResource;
 use App\Http\Resources\Api\V1\OrderResource;
 use App\Models\Order;
 use App\Models\Product;
@@ -59,7 +60,7 @@ class DashboardController extends BaseController
             'sales_chart' => $this->getSalesChartData($startDate, $endDate),
         ];
 
-        return $this->successResponse($stats, 'Dashboard statistics retrieved');
+        return $this->successResponse(new DashboardStatsResource($stats), 'Dashboard statistics retrieved');
     }
 
     /**
