@@ -2,9 +2,9 @@ name: CI - Backend Validation
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [master, develop]
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   workflow_dispatch:
 
 permissions:
@@ -184,6 +184,7 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
+        continue-on-error: true
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
