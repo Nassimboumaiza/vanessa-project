@@ -1,0 +1,81 @@
+# =============================================================================
+# Backend Docker Ignore
+# =============================================================================
+# Files and directories to exclude from Docker build context
+# This reduces build time and image size
+# =============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (installed in container)
+vendor/
+node_modules/
+
+# Build artifacts
+public/build/
+public/hot
+public/storage
+bootstrap/cache/*.php
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+storage/logs/*.log
+storage/app/public/*
+
+# Testing
+.phpunit.result.cache
+.coverage
+.php_cs.cache
+.php-cs-fixer.cache
+
+# Environment files (copied separately)
+.env
+.env.backup
+.env.testing
+.env.docker
+.env.*.local
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE.md
+*.md
+
+# CI/CD
+.github/
+.github/workflows/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# Frontend (separate container)
+../frontend/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp

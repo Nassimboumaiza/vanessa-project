@@ -1,0 +1,128 @@
+# =============================================================================
+# Production Docker Compose Configuration
+# =============================================================================
+# This file is for production deployments only.
+# It includes optimizations and security configurations not needed in development.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Or set COMPOSE_FILE environment variable:
+#   export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+#   docker compose up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Nginx Load Balancer (Production)
+  # ---------------------------------------------------------------------------
+  nginx:
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # PHP-FPM Application (Production)
+  # ---------------------------------------------------------------------------
+  app:
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=warning
+
+  # ---------------------------------------------------------------------------
+  # Queue Workers (Production)
+  # ---------------------------------------------------------------------------
+  queue:
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # Scheduler (Production - Single Instance)
+  # ---------------------------------------------------------------------------
+  scheduler:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Production)
+  # ---------------------------------------------------------------------------
+  frontend:
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    environment:
+      - NODE_ENV=production
+
+  # ---------------------------------------------------------------------------
+  # MySQL Database (Production)
+  # ---------------------------------------------------------------------------
+  db:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    command: >
+      mysqld
+      --default-authentication-plugin=mysql_native_password
+      --performance-schema=OFF
+      --innodb-buffer-pool-size=512M
+      --innodb-log-file-size=128M
+      --max-connections=200
+      --query-cache-size=64M
+      --query-cache-type=1
+      --table-open-cache=4000
+      --thread-cache-size=50
