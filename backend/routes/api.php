@@ -23,6 +23,10 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/health', [\App\Http\Controllers\Api\V1\HealthCheckController::class, 'check']);
     Route::get('/ping', [\App\Http\Controllers\Api\V1\HealthCheckController::class, 'ping']);
 
+    // CSP Violation Reporting Endpoint
+    Route::post('/csp-report', [\App\Http\Controllers\Api\V1\SecurityController::class, 'cspReport'])
+        ->name('csp.report');
+
     // Public Routes
     Route::get('/products', [\App\Http\Controllers\Api\V1\ProductController::class, 'index']);
     Route::get('/products/featured', [\App\Http\Controllers\Api\V1\ProductController::class, 'featured']);
