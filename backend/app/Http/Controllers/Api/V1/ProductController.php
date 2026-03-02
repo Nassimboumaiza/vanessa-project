@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseController;
+use App\Http\Requests\Api\V1\ProductSearchRequest;
 use App\Http\Resources\Api\V1\ProductCollection;
 use App\Http\Resources\Api\V1\ProductResource;
 use App\Services\ProductService;
@@ -32,7 +33,7 @@ class ProductController extends BaseController
         ];
 
         $filters = array_filter($filters, fn ($value) => $value !== null);
-        $perPage = (int) $request->get('per_page', config('api.pagination.default_per_page', 15));
+        $perPage = min((int) $request->get('per_page', config('api.pagination.default_per_page', 15)), 100);
 
         $products = $this->productService->getPaginatedProducts($filters, $perPage);
 
@@ -78,20 +79,20 @@ class ProductController extends BaseController
     /**
      * Search products.
      */
-    public function search(Request $request): JsonResponse
+    public function search(ProductSearchRequest $request): JsonResponse
     {
-        $query = $request->get('q');
-
-        if (empty($query)) {
-            return $this->errorResponse('Search query is required', 422);
-        }
+        $validated = $request->validated();
+        $query = $validated['q'];
 
         $filters = [
-            'sort_by' => $request->get('sort_by', 'created_at'),
-            'sort_order' => $request->get('sort_order', 'desc'),
+            'sort_by' => $validated['sort_by'] ?? 'created_at',
+            'sort_order' => $validated['sort_order'] ?? 'desc',
+            'category' => $validated['category'] ?? null,
+            'min_price' => $validated['min_price'] ?? null,
+            'max_price' => $validated['max_price'] ?? null,
         ];
 
-        $perPage = (int) $request->get('per_page', config('api.pagination.default_per_page', 15));
+        $perPage = $validated['per_page'] ?? config('api.pagination.default_per_page', 15);
         $products = $this->productService->searchProducts($query, $filters, $perPage);
 
         return $this->paginatedResponse(new ProductCollection($products), 'Search results retrieved successfully');

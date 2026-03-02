@@ -26,8 +26,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
             'phone' => '+1234567890',
         ];
 
@@ -48,8 +48,8 @@ class RegisterRequestTest extends TestCase
         $data = [
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -71,8 +71,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => str_repeat('a', 256),
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -93,8 +93,8 @@ class RegisterRequestTest extends TestCase
         $data = [
             'first_name' => 'John',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -116,8 +116,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => str_repeat('a', 256),
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -138,8 +138,8 @@ class RegisterRequestTest extends TestCase
         $data = [
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -161,8 +161,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'invalid-email',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -185,8 +185,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => $existingUser->email,
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -252,8 +252,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'DifferentPassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'DifferentPassword123!@#',
         ];
 
         // Act
@@ -275,8 +275,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
         ];
 
         // Act
@@ -297,8 +297,8 @@ class RegisterRequestTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'SecurePassword123!',
-            'password_confirmation' => 'SecurePassword123!',
+            'password' => 'SecurePassword123!@#',
+            'password_confirmation' => 'SecurePassword123!@#',
             'phone' => '+1234567890',
         ];
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\BaseController;
+use App\Http\Requests\Api\V1\ProductImageRequest;
 use App\Http\Requests\Api\V1\StoreProductRequest;
 use App\Http\Requests\Api\V1\UpdateProductRequest;
 use App\Http\Resources\Api\V1\ProductCollection;
@@ -157,19 +158,29 @@ class ProductController extends BaseController
     /**
      * Upload product images.
      */
-    public function uploadImages(Request $request, int $id): JsonResponse
+    public function uploadImages(ProductImageRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'images' => ['required', 'array'],
-            'images.*' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
-        ]);
-
         try {
             $product = $this->productService->findById($id);
             $uploadedImages = [];
 
             foreach ($request->file('images') as $index => $image) {
-                $path = $image->store('products/' . $product->id, 'public');
+                // Generate safe filename
+                $extension = $image->getClientOriginalExtension();
+                $safeFilename = sprintf(
+                    '%s_%d_%d.%s',
+                    \Str::slug($product->name),
+                    $product->id,
+                    $index + 1,
+                    $extension
+                );
+
+                $path = $image->storeAs(
+                    'products/' . $product->id,
+                    $safeFilename,
+                    'public'
+                );
+
                 $productImage = $product->images()->create([
                     'image_path' => $path,
                     'alt_text' => $product->name,
